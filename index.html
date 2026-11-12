@@ -1,0 +1,2660 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manor Lords Vegetable Plotter</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --line:#dfe3e8; --ink:#1f2933; --muted:#66717f;
+  --plot:#64748b; --quad:#ea580c; --house:#8fa3b8; --housefill:#e8eef5;
+  --sec:#5f9ea0; --secfill:#e6f4f1;
+  --clear:#be185d;
+  --b1:#dc2626; --b2:#16a34a; --b3:#2563eb; --shed:#ca8a04; --dbg:#9333ea; --plant:#000000;
+  --grid:#e9edf2; --grid10:#dde3ea; --axis:#c2cbd6;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+header{padding:16px 22px 10px}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.01em}
+header p{margin:4px 0 0;color:var(--muted);font-size:12.5px;max-width:82ch}
+.wrap{display:flex;gap:14px;padding:0 22px 22px;align-items:flex-start}
+.stage-col{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage{flex:1 1 auto;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:6px;height:calc(min(74vh,720px) * 1.4);display:flex;
+  position:relative;overflow:auto}
+svg{width:100%;height:100%;display:block;touch-action:none;user-select:none}
+aside{flex:0 0 292px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card.model{height:min(74vh,720px);display:flex;flex-direction:column;min-height:0}
+.card.model #status{flex:1 1 auto;min-height:0;overflow-y:auto}
+.card h2{margin:0 0 8px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.copy{margin-left:2px;display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:0;background:transparent;color:var(--muted);
+  border-radius:6px;cursor:pointer}
+.copy:hover{background:#eef2f6;color:var(--ink)}
+.copy svg{display:block}
+.copy.done{color:#0f766e}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 0}
+.row label{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;
+  user-select:none;color:var(--ink)}
+input[type=checkbox]{width:15px;height:15px;accent-color:#475569;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--quad)}
+.kv{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;
+  border-bottom:1px dashed #eef1f4}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{font-variant-numeric:tabular-nums}
+#status .sec{margin:8px 0 2px;padding-bottom:2px;font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:#475569;font-weight:600;border-bottom:1px solid #e2e8f0}
+#status .sec:first-child{margin-top:0}
+.sw{display:inline-block;width:13px;height:3px;border-radius:2px;margin-right:7px;
+  vertical-align:middle}
+.sw.b{height:9px;border-radius:2px;width:15px}
+.ly-state{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;letter-spacing:.02em}
+.ly-state.on{color:#0f766e}
+.ly-state.off{color:#b91c1c}
+button{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink)}
+button:hover{background:#f1f3f6}
+.btns{display:flex;gap:8px}
+.btns button{flex:1}
+.dimrow{display:grid;grid-template-columns:52px 1fr 66px;gap:8px;align-items:center;
+  margin-top:8px;font-size:12.5px;color:var(--muted)}
+.dimrow input[type=number]{width:100%;padding:2px 5px;border:1px solid var(--line);
+  border-radius:6px;font:inherit;color:var(--ink);background:#fff}
+.hint{cursor:help;text-decoration:underline dotted #b6c0cc;text-underline-offset:2px}
+.unitpick{cursor:pointer;border-bottom:1px dotted #b6c0cc;user-select:none}
+.unitpick:hover{color:#0f172a;border-bottom-color:#0f172a}
+input:disabled{opacity:.4;cursor:not-allowed}
+input:disabled + *{opacity:.6}
+select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
+  border-radius:6px;background:#fff;color:var(--ink)}
+#status{font-size:12.5px;line-height:1.45}
+#status.err{color:#b91c1c}
+#coords{font-size:12.5px;line-height:1.45;max-height:min(42vh,420px);overflow-y:auto}
+.banner{display:none;margin:0;padding:9px 12px;border-radius:10px;
+  background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12.5px}
+.banner.on{display:block}
+.handle{cursor:grab}
+.handle.locked{cursor:default}
+.handle.drag{cursor:grabbing}
+.hlabel{font-size:11.5px;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:3.5px}
+.glabel{font-size:10px;fill:#93a0ae;font-family:"Segoe UI",system-ui,sans-serif}
+.plabel{font-size:7px;fill:var(--plant);font-family:"Segoe UI",system-ui,sans-serif;
+  font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:1.6px;stroke-opacity:.75}
+</style></head>
+<body>
+<header>
+  <h1>Manor Lords Vegetable Plotter</h1>
+</header>
+<div class="wrap">
+  <div class="stage-col">
+    <div class="stage">
+      <svg id="svg" viewBox="0 0 900 868" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="banner" id="banner"></div>
+  </div>
+  <aside>
+    <div class="card">
+      <h2>Layers</h2>
+      <div class="row"><label><input type="checkbox" id="ly-grid" checked>
+        <i class="sw" style="background:var(--grid10)"></i>Grid (500)</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-zones">
+        <i class="sw b" style="background:var(--b1)"></i>Backyard Zones</label>
+        <span class="ly-state" id="st-zones">&mdash;</span></div>
+      <div class="row"><label><input type="checkbox" id="ly-plants" checked>
+        <i class="sw" style="background:var(--plant)"></i>Plants (100 grid)</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-plabels" checked>
+        <i class="sw" style="background:var(--plant)"></i>Plant Labels</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-buildings" checked>
+        <i class="sw b" style="background:var(--housefill)"></i>Buildings</label>
+        <span class="ly-state" id="st-buildings">&mdash;</span></div>
+      <div class="row"><label><input type="checkbox" id="ly-labels">
+        <i class="sw" style="background:var(--quad)"></i>Labels</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-dbg">
+        <i class="sw" style="background:var(--dbg)"></i>Fit internals (Q/A0)</label></div>
+    </div>
+    <div class="card">
+      <h2>Plot Control</h2>
+      <div class="row"><label>Mode</label>
+        <select id="mode">
+          <option value="manual" selected>Manual Mode</option>
+          <option value="edge">Edge Mode</option>
+        </select></div>
+      <div class="row"><label>Presets</label>
+        <select id="preset">
+          <option value="0" selected>4CP Square</option>
+          <option value="1">2CP Linear</option>
+          <option value="2">Tacticat BFD</option>
+          <option value="-1">Custom</option>
+        </select></div>
+      <div id="manopt">
+        <div class="row"><label><input type="checkbox" id="snap"> Snap to Grid</label></div>
+      </div>
+      <div id="dims" style="display:none">
+        <div class="row"><label><input type="checkbox" id="square"> Make Square</label></div>
+        <div class="dimrow"><span>Frontage</span>
+          <input type="range" id="dim-w" min="100" max="20000" step="100">
+          <input type="number" id="num-w" min="100" max="20000" step="100"></div>
+        <div class="dimrow"><span>Length</span>
+          <input type="range" id="dim-l" min="100" max="20000" step="100">
+          <input type="number" id="num-l" min="100" max="20000" step="100"></div>
+      </div>
+    </div>
+    <div class="card model">
+      <h2>Model<button id="copy-model" class="copy" title="Copy model parameters"
+        aria-label="Copy model parameters"><svg width="14" height="14" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect>
+        <path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button></h2>
+      <div id="status"></div>
+    </div>
+    <div class="card">
+      <h2>Coordinates</h2>
+      <div id="coords"></div>
+    </div>
+    <div class="card">
+      <h2>View</h2>
+      <div class="btns">
+        <button id="fit">Fit view</button>
+        <button id="reset">Reset shape</button>
+      </div>
+      <div class="row" style="margin-top:8px"><label><input type="checkbox" id="autozoom" checked>
+        Autozoom</label></div>
+    </div>
+  </aside>
+</div>
+<script>
+/* beds_model.js -- browser port of garden/predict_beds.py
+ *
+ * Mirrors, function for function:
+ *   FUN_144c91df0  slicePlotInHalf (shared path only)
+ *   FUN_144c63070  extractSmoothSide
+ *   FUN_144ca4870  trimSmoothSide
+ *   FUN_1411a9fd0  seg/seg intersection
+ *   FUN_144c60690  side<->seg crossing test
+ *   FUN_144c62cf0  stretchSegment
+ *   FUN_144cef080  lerpParam
+ *   FUN_144ca23f0  engine_smooth_border (400-unit resample)
+ *   FUN_144c6e4e0  the house-side fitter (350 across x 600 along, slide 24x20)
+ *   FUN_144d04680  the 6-cut bed tree
+ *
+ * Kept deliberately close to the Python so the two can be diffed numerically.
+ * Points are [x, y, z].
+ */
+(function (root) {
+  "use strict";
+
+  var TOL2 = 10.0;          // extractSmoothSide corner tolerance, dist^2
+  var SPACING = 400.0;      // FUN_144ca23f0 resample spacing
+
+  // ---------------------------------------------------------- vector helpers
+  function V(x, y, z) { return [x, y, z === undefined ? 0 : z]; }
+  function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function mul(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function mid(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]; }
+  function dist2xy(a, b) {
+    var dx = a[0] - b[0], dy = a[1] - b[1];
+    return dx * dx + dy * dy;
+  }
+  function lerpPt(a, b, f) {
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  }
+  function unit2(x, y) {
+    var l = Math.sqrt(x * x + y * y);
+    if (l < 1e-12) { return [0, 0]; }
+    return [x / l, y / l];
+  }
+
+  // --------------------------------------------------------- FUN_1411a9fd0
+  // Inclusive [0,1] +- SEG_EPS, mirroring predict_beds.seg_seg: cut 1's segment
+  // passes exactly through mid(C0,C1) and mid(C2,C3), so the CD test is a
+  // boundary touch that an exact [0,1] check can reject by one ulp.
+  var SEG_EPS = 1e-9;
+
+  function segSeg(p1, p2, p3, p4) {
+    var dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+    var ay = p1[1] - p3[1];
+    var den = (p4[1] - p3[1]) * dx - (p4[0] - p3[0]) * dy;
+    if (den === 0.0) { return null; }
+    var inv = 1.0 / den;
+    var t = (ay * (p4[0] - p3[0]) - (p1[0] - p3[0]) * (p4[1] - p3[1])) * inv;
+    var u = (ay * dx - (p1[0] - p3[0]) * dy) * inv;
+    if (t < -SEG_EPS || t > 1.0 + SEG_EPS || u < -SEG_EPS || u > 1.0 + SEG_EPS) { return null; }
+    t = Math.max(0.0, Math.min(1.0, t));
+    return [dx * t + p1[0], dy * t + p1[1], (p2[2] - p1[2]) * t + p1[2]];
+  }
+
+  // --------------------------------------------------------- FUN_144c60690
+  function sideCrosses(side, seg) {
+    for (var i = 0; i < side.length - 1; i++) {
+      if (segSeg(side[i], side[i + 1], seg[0], seg[1]) !== null) { return true; }
+    }
+    return false;
+  }
+
+  // --------------------------------------------------------- FUN_144ca4870
+  function trimSide(side, seg, trimEnd, notes) {
+    var n = side.length, out, i, h;
+    if (trimEnd) {
+      out = [side[0]];
+      for (i = 0; i < n - 1; i++) {
+        h = segSeg(side[i], side[i + 1], seg[0], seg[1]);
+        if (h !== null) { out.push(h); return out; }
+        out.push(side[i + 1]);
+      }
+      notes.push("trimSmoothSide (trimEnd) - no intersection found");
+      return out;
+    }
+    out = [];
+    for (i = 0; i < n - 1; i++) {
+      h = segSeg(side[i], side[i + 1], seg[0], seg[1]);
+      if (h !== null) {
+        out.push(h);
+        for (var k = i + 1; k < n; k++) { out.push(side[k]); }
+        return out;
+      }
+    }
+    return out;
+  }
+
+  // --------------------------------------------------------- FUN_144c63070
+  function extractSide(profile, cA, cB, notes) {
+    var n = profile.length;
+    if (n < 3) { return profile.slice(); }
+    var start = null, i;
+    for (i = 0; i < n; i++) {
+      if (dist2xy(profile[i], cA) < TOL2) { start = i; break; }
+    }
+    if (start === null) {
+      notes.push("extractSmoothSide: Corner A not found");
+      return [];
+    }
+    var out = [];
+    for (i = start; i < n; i++) {
+      out.push(profile[i]);
+      if (dist2xy(profile[i], cB) < TOL2) { return out; }
+    }
+    notes.push("extractSmoothSide: Corner B not found (looped)");
+    return out;
+  }
+
+  // --------------------------------------------------------- FUN_144c62cf0
+  function stretch(seg, k) {
+    var m = mid(seg[0], seg[1]);
+    return [add(seg[0], mul(sub(seg[0], m), k)), add(seg[1], mul(sub(seg[1], m), k))];
+  }
+
+  // --------------------------------------------------------- FUN_144cef080
+  function lerpParam(a, b, frac) { return a + (b - a) * frac; }
+
+  // --------------------------------------------------------------- _shared
+  function shared(sides, seg, mode, notes) {
+    var AB = sides[0], BC = sides[1], CD = sides[2], DA = sides[3];
+    var tag = mode === "L" ? "sliceLeftRight" : "normal";
+
+    var BChead = trimSide(BC, seg, 1, notes);
+    if (BChead.length < 2) { notes.push("slicePlotInHalf: partA_BC... ABORT!"); return null; }
+    var DAtail = trimSide(DA, seg, 0, notes);
+    if (DAtail.length < 2) {
+      notes.push("slicePlotInHalf (" + tag + "): partA_DA... ABORT!");
+      return null;
+    }
+    var BCtail = trimSide(BC, seg, 0, notes);
+    if (BCtail.length === 0) { notes.push("slicePlotInHalf: partB_BC... ABORT!"); return null; }
+    var CDtrim = CD.slice(1);
+    var DAhead = trimSide(DA, seg, 1, notes);
+    if (DAhead.length === 0) {
+      notes.push("port: slicePlotInHalf (" + tag + "): partB_DA empty cell, cut skipped");
+      return null;
+    }
+    var DAhead1 = DAhead.slice(1);
+
+    var poly1 = AB.slice();
+    poly1 = poly1.concat(BChead.slice(1), DAtail);
+    var corners1 = [AB[0], AB[AB.length - 1], BChead[BChead.length - 1], DAtail[0], DAtail[DAtail.length - 1]];
+
+    var poly2 = [DAhead[DAhead.length - 1]].concat(BCtail, CDtrim, DAhead1);
+    var corners2 = [DAhead[DAhead.length - 1], BCtail[0], BCtail[BCtail.length - 1], DAhead[0]];
+
+    if (mode === "L") {
+      corners1 = [corners1[3], corners1[0], corners1[1], corners1[2]];
+      corners2 = [corners2[3], corners2[0], corners2[1], corners2[2]];
+    }
+    return [poly1, corners1, poly2, corners2];
+  }
+
+  // ---------------------------------------------- AB+BC corner cut (engine normal)
+  // The cut enters through AB at H1 and leaves through BC at H2, cutting off
+  // the P1 corner.  This is the engine's "normal" body; the model previously
+  // misclassified it as shortDAPlotSlice and aborted.  The kept piece is the
+  // rest of the plot, with H1->H2 as its first edge.
+  function cornerCut(AB, BC, CD, DA, seg) {
+    var i, h, H1 = null, H2 = null;
+    for (i = 0; i < AB.length - 1; i++) {
+      h = segSeg(AB[i], AB[i + 1], seg[0], seg[1]);
+      if (h) { H1 = h; break; }
+    }
+    for (i = 0; i < BC.length - 1; i++) {
+      h = segSeg(BC[i], BC[i + 1], seg[0], seg[1]);
+      if (h) { H2 = h; break; }
+    }
+    if (!H1 || !H2) { return null; }
+    var ABhead = trimSide(AB, seg, 1);   // P0 -> H1
+    var BCtail = trimSide(BC, seg, 0);   // H2 -> P2
+    var ABtail = trimSide(AB, seg, 0);   // H1 -> P1
+    var BChead = trimSide(BC, seg, 1);   // P1 -> H2
+    if (ABhead.length < 2 || BCtail.length < 2 ||
+        ABtail.length < 2 || BChead.length < 2) { return null; }
+    var rest = [H1, H2].concat(BCtail.slice(1), CD.slice(1), DA.slice(1), ABhead.slice(1));
+    var restCorners = [H1, H2, BCtail[BCtail.length - 1], CD[CD.length - 1]];
+    var corner = [H1].concat(ABtail.slice(1), BChead.slice(1));
+    var cornerCorners = [H1, ABtail[ABtail.length - 1], H2, H1];
+    return [corner, cornerCorners, rest, restCorners];
+  }
+
+  // BC+CD corner cut (P2 corner).  The cut enters BC at H1 and CD at H2; the
+  // piece beyond it is H2(on CD) -> H1(on BC) -> border through P2 -> H2, a
+  // closed ring [H2, H1, P2, H2].  Live 2026-11-09 extracted plot:
+  // extensionCorners [C0, C1, P2, C0], C0 on CD, C1 on BC.
+  function cornerCutP2(AB, BC, CD, DA, seg) {
+    var i, h, H1 = null, H2 = null;
+    for (i = 0; i < BC.length - 1; i++) {
+      h = segSeg(BC[i], BC[i + 1], seg[0], seg[1]);
+      if (h) { H1 = h; break; }
+    }
+    for (i = 0; i < CD.length - 1; i++) {
+      h = segSeg(CD[i], CD[i + 1], seg[0], seg[1]);
+      if (h) { H2 = h; break; }
+    }
+    if (!H1 || !H2) { return null; }
+    var BCtail = trimSide(BC, seg, 0);   // H1 -> P2
+    var CDhead = trimSide(CD, seg, 1);   // P2 -> H2
+    if (BCtail.length < 2 || CDhead.length < 2) { return null; }
+    var kept = [H2, H1].concat(BCtail.slice(1), CDhead.slice(1));
+    var keptCorners = [H2, H1, BCtail[BCtail.length - 1], H2];
+    var BChead = trimSide(BC, seg, 1);   // P1 -> H1
+    var CDtail = trimSide(CD, seg, 0);   // H2 -> P3
+    if (BChead.length < 2 || CDtail.length < 2) { return null; }
+    var rest = [H1].concat(BChead.slice().reverse().slice(1),
+                           AB.slice().reverse().slice(1),
+                           DA.slice().reverse().slice(1),
+                           CDtail.slice().reverse().slice(1));
+    var restCorners = [H1, BChead[0], AB[0], CDtail[CDtail.length - 1]];
+    return [rest, restCorners, kept, keptCorners];
+  }
+
+  // CD+DA corner cut (P3 corner).  H_da on DA, H_cd on CD; the kept piece is
+  // [H_da] + CD_tail(H_cd->P3) + DA_head(P3->H_da) -- the ring
+  // H_da -> H_cd -> P3 -> H_da.  cornersB is 5 points with the CD-tail
+  // midpoint third (engine decompile 535-598).
+  function cornerCutP3(AB, BC, CD, DA, seg) {
+    var i, h, H_da = null, H_cd = null;
+    for (i = 0; i < DA.length - 1; i++) {
+      h = segSeg(DA[i], DA[i + 1], seg[0], seg[1]);
+      if (h) { H_da = h; break; }
+    }
+    for (i = 0; i < CD.length - 1; i++) {
+      h = segSeg(CD[i], CD[i + 1], seg[0], seg[1]);
+      if (h) { H_cd = h; break; }
+    }
+    if (!H_da || !H_cd) { return null; }
+    var CDtail = trimSide(CD, seg, 0);   // H_cd -> P3
+    var DAhead = trimSide(DA, seg, 1);   // P3 -> H_da
+    if (CDtail.length < 2 || DAhead.length < 2) { return null; }
+    var kept = [H_da].concat(CDtail, DAhead.slice(1));
+    var mid = CDtail[Math.min(Math.floor(CDtail.length / 2), CDtail.length - 1)];
+    var keptCorners = [H_da, CDtail[0], mid, DAhead[0], H_da];
+    var CDhead = trimSide(CD, seg, 1);   // P2 -> H_cd
+    var DAtail = trimSide(DA, seg, 0);   // H_da -> P0
+    var rest = AB.concat(BC, CDhead, [H_da], DAtail, [AB[0]]);
+    var restCorners = [AB[0], BC[0], CD[0], H_da, AB[0]];
+    return [rest, restCorners, kept, keptCorners];
+  }
+
+  // --------------------------------------------------------- FUN_144c91df0
+  function slicePlotInHalf(profile, corners, seg, notes) {
+    if (corners.length < 4) { notes.push("slicePlotInHalf: not enough borderCorners, abort"); return null; }
+    if (profile.length < 4) { notes.push("slicePlotInHalf: not enough smoothBorder points, abort"); return null; }
+    var c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
+    var AB = extractSide(profile, c0, c1, notes);
+    var BC = extractSide(profile, c1, c2, notes);
+    var CD = extractSide(profile, c2, c3, notes);
+    var DA = extractSide(profile, c3, c0, notes);
+    var nm = [["AB", AB], ["BC", BC], ["CD", CD], ["DA", DA]];
+    for (var i = 0; i < 4; i++) {
+      if (nm[i][1].length < 2) {
+        notes.push("slicePlotInHalf: " + nm[i][0] + " segment extraction failed");
+        return null;
+      }
+    }
+    if (sideCrosses(DA, seg) && sideCrosses(BC, seg)) {
+      return { r: shared([AB, BC, CD, DA], seg, "normal", notes), mode: "normal" };
+    }
+    if (sideCrosses(AB, seg) && sideCrosses(CD, seg)) {
+      return { r: shared([BC, CD, DA, AB], seg, "L", notes), mode: "sliceLeftRight" };
+    }
+    // Engine order: CD+BC is tested before the AB+BC body, and CD+DA is only
+    // reached inside that body's failure path (decompile 227 / 412).
+    if (sideCrosses(CD, seg) && sideCrosses(BC, seg)) {
+      // P2-corner cut: keep the far piece (the corner at P2).  Live-validated
+      // 2026-11-09 (extensionCorners [C0, C1, P2, C0]).
+      var cp2 = cornerCutP2(AB, BC, CD, DA, seg);
+      if (cp2) { return { r: cp2, mode: "corner@P2" }; }
+    }
+    if (sideCrosses(AB, seg) && sideCrosses(BC, seg)) {
+      var cc = cornerCut(AB, BC, CD, DA, seg);
+      if (cc) { return { r: cc, mode: "normal" }; }
+    }
+    if (sideCrosses(CD, seg) && sideCrosses(DA, seg)) {
+      // P3-corner cut: the engine keeps the far piece (the corner at P3).
+      var cp3 = cornerCutP3(AB, BC, CD, DA, seg);
+      if (cp3) { return { r: cp3, mode: "corner@P3" }; }
+    }
+    notes.push("slicePlotInHalf (shortDAPlotSlice): partA_BC... ABORT!");
+    return { r: null, mode: "shortDAPlotSlice abort (partA_BC)", engineAbort: true };
+  }
+
+  // --------------------------------------------------------- FUN_144ca23f0
+  function engineBorder(cornersClosed, spacing) {
+    var sp = spacing === undefined ? SPACING : spacing;
+    var n = cornersClosed.length;
+    if (n < 3) { return cornersClosed.slice(); }
+    var out = [], i, k;
+    for (i = 0; i < n - 1; i++) {
+      var a = cornersClosed[i], b = cornersClosed[i + 1];
+      var d = Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2) + Math.pow(b[2] - a[2], 2));
+      var steps = Math.floor(d / sp) + 1;
+      if (steps < 1) { steps = 1; }
+      var kmax = (i === n - 2) ? steps : steps - 1;
+      for (k = 0; k <= kmax; k++) { out.push(lerpPt(a, b, k / steps)); }
+    }
+    return out;
+  }
+
+  // ----------------------------------------------------- box + slide helpers
+  function rectOutline(p, d, alongHalf, acrossHalf) {
+    // 2D on purpose: FUN_144c6e4e0's box and the {300,750} candidate rect are
+    // planar, and predict_beds._rect_outline returns (x, y) pairs too.
+    var nx = -d[1], ny = d[0];
+    var pts = [], sgn = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    for (var i = 0; i < 4; i++) {
+      var sx = sgn[i][0], sy = sgn[i][1];
+      pts.push([p[0] + d[0] * alongHalf * sx + nx * acrossHalf * sy,
+                p[1] + d[1] * alongHalf * sx + ny * acrossHalf * sy]);
+    }
+    pts.push(pts[0]);
+    return pts;
+  }
+
+  function nearestOnPoly(p, poly) {
+    var best = 1e30, bq = null;
+    for (var i = 0; i < poly.length - 1; i++) {
+      var a = poly[i], b = poly[i + 1];
+      var dx = b[0] - a[0], dy = b[1] - a[1];
+      var L2 = dx * dx + dy * dy;
+      var t = L2 < 1e-12 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+      var q = [a[0] + t * dx, a[1] + t * dy];
+      var dd = Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
+      if (dd < best) { best = dd; bq = q; }
+    }
+    return bq;
+  }
+
+  // Inclusive intersection test, matching the engine's own side test in the
+  // fitter (FUN_144cbdbf0: 0 <= t <= 1 && 0 <= u <= 1 on both segments, no
+  // endpoint exclusion).  The preview A fit's near edge lies exactly on the
+  // walked side and its end corners touch that side in the middle of a side
+  // segment; the engine counts those and answers with one +20 slide, which is
+  // what every live A transform shows (across 370, not 350).
+  function boxHits(polyPts, centre, d, alongHalf, acrossHalf, edges) {
+    var box = rectOutline(centre, d, alongHalf, acrossHalf);
+    var use = edges || [0, 1, 2, 3];
+    for (var k = 0; k < use.length; k++) {
+      var i = use[k];
+      for (var j = 0; j < polyPts.length - 1; j++) {
+        if (segSeg(box[i], box[i + 1], polyPts[j], polyPts[j + 1]) !== null) { return true; }
+      }
+    }
+    return false;
+  }
+
+  // extractSmoothSide + an arc-length parameterisation of it
+  function sideGeometry(border, cA, cB, notes) {
+    var side = extractSide(border, cA, cB, notes);
+    if (side.length < 2) { return null; }
+    var spts = side, len = 0, i;
+    for (i = 0; i < spts.length - 1; i++) {
+      len += Math.sqrt(Math.pow(spts[i + 1][0] - spts[i][0], 2) +
+                       Math.pow(spts[i + 1][1] - spts[i][1], 2));
+    }
+    return {
+      len: len,
+      pts: spts,
+      arc: function (st) {
+        var acc = 0;
+        for (var j = 0; j < spts.length - 1; j++) {
+          var a = spts[j], b = spts[j + 1];
+          var L = Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2));
+          if (L < 1e-12) { continue; }
+          if (acc + L >= st) {
+            var t = (st - acc) / L;
+            return [
+              [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2]],
+              [(b[0] - a[0]) / L, (b[1] - a[1]) / L]
+            ];
+          }
+          acc += L;
+        }
+        return null;
+      }
+    };
+  }
+
+  // FUN_144c6e4e0's candidate test.  Engine geometry (houseFitter_new.c
+  // 318-329, asm 0x144cbe330-0x144cbe640):
+  //
+  //   c0  = p + halfAcross*perp               <- the transform origin
+  //   box = c0 +- halfAlong*dir +- halfAcross*perp
+  //
+  // so the box is centred at c0 and spans 0..2*halfAcross off the walked side;
+  // its near edge lies on the side line.  The side test uses 3 box edges
+  // (skips edge 3); the obstacle test uses all 4.  A hit against the WALKED
+  // side slides the box 20.0 along +perp (deeper), at most 24 times; a hit
+  // against an OBSTACLE rejects the candidate without sliding.
+  function slideUntilClear(borderPts, p, d, halfAcross, halfAlong, extra) {
+    var px = d[1], py = -d[0];
+    var c0 = [p[0] + halfAcross * px, p[1] + halfAcross * py];
+    for (var j = 0; j < 25; j++) {
+      if (j) {
+        c0 = [c0[0] + px * 20.0, c0[1] + py * 20.0];
+      }
+      if (boxHits(borderPts, c0, d, halfAlong, halfAcross, [0, 1, 2])) {
+        if (j === 24) { break; }
+        continue;
+      }
+      var blocked = false;
+      if (extra) {
+        for (var k = 0; k < extra.length && !blocked; k++) {
+          blocked = boxHits(extra[k], c0, d, halfAlong, halfAcross, null);
+        }
+      }
+      if (blocked) { return { ok: false, c0: c0, slide: j }; }
+      return { ok: true, c0: c0, slide: j };
+    }
+    return { ok: false, c0: c0, slide: 24 };
+  }
+
+  // ------------------------------------------------------------ winding check
+  // Right-handed signed area (+ = counter-clockwise with +X right, +Y up).
+  // Manor Lords is UE5: left-handed, and its map view has +Y pointing DOWN
+  // (y=0 is higher on screen than y=1).  The engine's fieldBorderPoints always
+  // give a NEGATIVE signed area, which renders counter-clockwise in game.
+  // Any other sign is not a plot the engine could have produced, and the model
+  // does not fail on it -- it quietly returns a different garden.
+  //
+  // Corner order note: FUN_144c59650 emits the four corners in the builder's
+  // own traversal, P0'..P3' (same points, other direction); FUN_144d016b0 then
+  // fills fieldBorderPoints in the REVERSE order, so P(i) = P'(3-i).  Everything
+  // in this module works in the stored fieldBorderPoints order, i.e. P0..P3.
+  // The prime is our notation, not an engine name.
+  function winding(corners) {
+    var s = 0, n = corners.length;
+    for (var i = 0; i < n; i++) {
+      var a = corners[i], b = corners[(i + 1) % n];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    if (Math.abs(s) < 1e-9) { return 0; }
+    return s > 0 ? 1 : -1;
+  }
+
+  function pointInPoly(pt, poly) {
+    var x = pt[0], y = pt[1], inside = false, n = poly.length;
+    for (var i = 0; i < n; i++) {
+      var a = poly[i], b = poly[(i + 1) % n];
+      if ((a[1] > y) !== (b[1] > y)) {
+        var t = b[1] !== a[1] ? (y - a[1]) / (b[1] - a[1]) : 0;
+        if (x < a[0] + t * (b[0] - a[0])) { inside = !inside; }
+      }
+    }
+    return inside;
+  }
+
+  // Engine plots are SIMPLE quads, not necessarily convex: a concave (reflex)
+  // corner is allowed, only a self-intersecting outline is impossible.  Do not
+  // reject mixed cross-product signs here.
+  function isSimpleQuad(corners) {
+    if (!corners || corners.length !== 4) { return false; }
+    if (segSeg(corners[0], corners[1], corners[2], corners[3]) !== null) { return false; }
+    if (segSeg(corners[1], corners[2], corners[3], corners[0]) !== null) { return false; }
+    return true;
+  }
+
+  function edgeCount(poly) {
+    if (!poly || poly.length < 2) { return 0; }
+    var n = poly.length;
+    return dist2xy(poly[0], poly[n - 1]) < 1e-9 ? n - 1 : n;
+  }
+
+  function dist2ToSeg(p, a, b) {
+    var dx = b[0] - a[0], dy = b[1] - a[1];
+    var L2 = dx * dx + dy * dy;
+    var t = L2 < 1e-12 ? 0 : ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2;
+    t = Math.max(0, Math.min(1, t));
+    var ex = p[0] - (a[0] + t * dx), ey = p[1] - (a[1] + t * dy);
+    return ex * ex + ey * ey;
+  }
+
+  // ------------------------------------------------ build_extension_for_plot
+  // Engine chain: FUN_144b59950 extracts the facade C4/C5 (preview fitter
+  // 700/350/600, Q on the 750x300 rect, A0 = Q + 200u); FUN_144b35700 copies
+  // C4/C5 into master+0x938 as backFacade; FUN_144d54c70 stretches it x20 and
+  // slices the plot, keeping the B output.
+  function generateExtension(fieldPts, borderPts, back, notes) {
+    var nm = notes || [];
+    var seg = stretch(back, 20.0);
+    var sl = slicePlotInHalf(fieldPts, borderPts, seg, nm);
+    if (sl && !sl.r) {
+      sl = slicePlotInHalf(fieldPts, borderPts, [seg[1], seg[0]], nm);
+    }
+    if (!sl || !sl.r) {
+      var why = (sl && sl.engineAbort && nm.length) ? nm[nm.length - 1]
+              : ("cut " + (sl ? sl.mode : "failed"));
+      return { ok: false, reason: why,
+               engineAbort: !!(sl && sl.engineAbort), notes: nm };
+    }
+    return { ok: true, profile: sl.r[2], quad: sl.r[3], mode: sl.mode, notes: nm };
+  }
+
+  function buildExtensionForPlot(corners, border, opts) {
+    var o = opts || {};
+    var start = o.start === undefined ? 700.0 : o.start;
+    var step = o.step === undefined ? 50.0 : o.step;
+    var iters = o.iters === undefined ? 30 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 350.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 600.0 : o.halfAlong;
+    var rectAlong = o.rectAlong === undefined ? 750.0 : o.rectAlong;
+    var rectAcross = o.rectAcross === undefined ? 300.0 : o.rectAcross;
+    var offset = o.offset === undefined ? 200.0 : o.offset;
+
+    var trace = { rejected: [] };
+    var notes = [];
+    var P0 = corners[0], P1 = corners[1], P2 = corners[2], P3 = corners[3];
+    if (o.backFacade) {
+      trace.backFacade = o.backFacade;
+      trace.facadeSource = "explicit";
+      var gen0 = generateExtension(border, corners, o.backFacade, notes);
+      gen0.trace = trace;
+      return gen0;
+    }
+    var sg = sideGeometry(border, P1, P2, notes);
+    var sg30 = sideGeometry(border, P3, P0, notes);
+    if (!sg) {
+      return { ok: false, reason: "side extraction failed", notes: notes, trace: trace };
+    }
+    trace.sideLen = sg.len;
+
+    // FUN_144b59950: walk side = P1->P2, obstacle1 = P3->P0 (not the whole
+    // border).  A narrow tapered plot can fail against this obstacle while the
+    // smaller A/B house boxes still fit.
+    var obs = sg30 ? [sg30.pts] : [];
+    var m = [(P2[0] + P3[0]) / 2, (P2[1] + P3[1]) / 2, (P2[2] + P3[2]) / 2];
+    // The candidate set is the UNION of two rectangles (FUN_144b59950):
+    //   A box: halves (300 across, 750 along) about the A transform (2776),
+    //          built unconditionally;
+    //   B box: halves (200 across, 300 along) about the B transform (2786-2803),
+    //          appended only when the B translation is not ~zero.
+    // Q is the candidate CORNER nearest to mid(P2,P3) (FUN_144cd6010 emits the
+    // four corners; 2832-2848 keeps the nearest point, never an edge
+    // projection).  B adds candidates, it does not replace A.
+    var at = o.aTransform || previewA(corners, border, {});
+    if (!at) {
+      return { ok: false, reason: "A fit found no candidate \u2014 no facade",
+               notes: notes, trace: trace };
+    }
+    var bt = o.bTransform || previewSecondary(corners, border, at.origin, at.dir, {});
+    var boxes = [["A", rectOutline(at.origin, at.dir, rectAlong, rectAcross)]];
+    if (bt) {
+      boxes.push(["B", rectOutline(bt.origin, bt.dir, 300.0, 200.0)]);
+    }
+    var Q = null, qsrc = null, bestD = 1e30;
+    for (var bi = 0; bi < boxes.length; bi++) {
+      var poly = boxes[bi][1];
+      for (var vi = 0; vi < poly.length; vi++) {
+        var ddx = m[0] - poly[vi][0], ddy = m[1] - poly[vi][1];
+        var d2 = ddx * ddx + ddy * ddy;
+        if (d2 < bestD) { bestD = d2; Q = poly[vi]; qsrc = boxes[bi][0]; }
+      }
+    }
+    if (!Q) {
+      return { ok: false, reason: "no candidate corner", notes: notes, trace: trace };
+    }
+    var A0 = null;
+    {
+      // u = outward normal toward Q, from the nearest point on the SEGMENT
+      // P0->P1 (FUN_141191d80 clamps: <= 0 -> P0, >= |v|^2 -> P1).
+      var fx = P1[0] - P0[0], fy = P1[1] - P0[1];
+      var fl2 = fx * fx + fy * fy;
+      if (fl2 < 1e-12) { return { ok: false, reason: "degenerate street edge", notes: notes, trace: trace }; }
+      var tt = ((Q[0] - P0[0]) * fx + (Q[1] - P0[1]) * fy) / fl2;
+      if (tt < 0) { tt = 0; } else if (tt > 1) { tt = 1; }
+      var proj = [P0[0] + tt * fx, P0[1] + tt * fy];
+      var vx = Q[0] - proj[0], vy = Q[1] - proj[1];
+      var vl = Math.sqrt(vx * vx + vy * vy);
+      if (vl < 1e-12) { return { ok: false, reason: "degenerate facade normal", notes: notes, trace: trace }; }
+      A0 = [Q[0] + offset * vx / vl, Q[1] + offset * vy / vl];
+      trace.arc = at.arc;
+      trace.slide = at.slide;
+      trace.boxSource = qsrc;
+      trace.boxes = boxes.map(function (b) { return b[0]; });
+      trace.origin = qsrc === "B" ? bt.origin : at.origin;
+      trace.dir = qsrc === "B" ? bt.dir : at.dir;
+      trace.Q = Q;
+      trace.A0 = A0;
+    }
+
+    var dd = unit2(P2[0] - P1[0], P2[1] - P1[1]);
+    var dirv = [-dd[1], dd[0]];
+    // FUN_144b59950 draws the blade as A0 +- 10,000*rot90(w) and intersects that
+    // FINITE segment (0x1470da528 = +10000, 0x147191e38 = -10000; then
+    // `local_5c0 == 2`).  A crossing farther than 10,000 from A0 is never seen,
+    // so a chord longer than 10,000 on ONE side of A0 gives a single hit and no
+    // facade at all (live 2026-11-10: 11,492 chord, A0 669 from the near end).
+    var hits = linePolyHits(A0, dirv, border).filter(function (h) {
+      return Math.hypot(h[0] - A0[0], h[1] - A0[1]) <= 10000 + 1e-9;
+    });
+    trace.facadeHitsOnBlade = hits.length;
+    if (hits.length !== 2) {
+      trace.facadeHits = hits.length;
+      return { ok: false, reason: "back facade has " + hits.length + " border crossings",
+               notes: notes, trace: trace };
+    }
+    var back = [[hits[0][0], hits[0][1], P1[2]], [hits[1][0], hits[1][1], P1[2]]];
+    trace.backFacade = back;
+    var gen = generateExtension(border, corners, back, notes);
+    gen.trace = trace;
+    return gen;
+  }
+
+  // ---------------------------------------------- A0 facade pair (both sides)
+  // Both A0 points are at arc 180 + 70*frac: from P1 on P1->P2 and from P0 on
+  // P0->P3 (local_1f98, the P3->P0 copy, is reversed in place at
+  // constructResidential_new.c 1310-1330, so that search runs from P0).
+  function a0Pair(corners, border, frac) {
+    var sg12 = sideGeometry(border, corners[1], corners[2]);
+    var sg30 = sideGeometry(border, corners[3], corners[0]);
+    if (!sg12 || !sg30) { return null; }
+    var along = 180.0 + 70.0 * frac;
+    var a12 = arcPointOrLast(sg12, along);
+    var a03 = arcPointOrLast(sg30, Math.max(0, sg30.len - along));
+    if (!a12 || !a03) { return null; }
+    return { a12: a12, a03: a03, sg12: sg12, sg30: sg30 };
+  }
+
+  // --------------------------------------------------------------- fit_houses
+  // constructResidential_new.c 1092-1135 chooses the A-part branch from the
+  // building level (`param_2`, 1..4) and the street length:
+  //
+  //   street >= 2100  or  level < 4              -> normal
+  //   1275 <= street < 2100 and frac >= 0.5      -> normal
+  //   otherwise (level 4, street < 2100)         -> stepped
+  //
+  // Normal (0x144d04afc / decompile 3220): walk P1->P2, start 600, step 50,
+  // 20 candidates, halfAlong 600, halfAcross 230, obstacle1 = the A0 chord.
+  //
+  // Stepped (0x144d02193 / decompile 1764-1768): walk P1->P2, start 0, step
+  // 30, halfAlong 330, halfAcross = d/4 (frac >= 0.25) where d is the distance
+  // between the two FieldPoints crossings of the perpendicular through A0;
+  // up to 10 attempts, attempt i uses a 10%-smaller across and 6*i candidates;
+  // obstacle1 = FieldPoints.
+  function fitHouses(corners, border, opts) {
+    var o = opts || {};
+    var frac = o.frac === undefined ? 0.5 : o.frac;
+    var level = o.level === undefined ? 4 : o.level;
+    var start = o.start === undefined ? 600.0 : o.start;
+    var step = o.step === undefined ? 50.0 : o.step;
+    var iters = o.iters === undefined ? 20 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 230.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 600.0 : o.halfAlong;
+    var houseAlong = o.houseAlong === undefined ? 750.0 : o.houseAlong;
+    var houseAcross = o.houseAcross === undefined ? 300.0 : o.houseAcross;
+    var secAlong = o.secAlong === undefined ? 300.0 : o.secAlong;
+    var secAcross = o.secAcross === undefined ? 200.0 : o.secAcross;
+
+    var out = { primary: null, primaryShape: null, secondary: null,
+                secondaryShape: null, sideLen: 0, branch: null, stepped: false,
+                street: 0, halfAlong: 0, halfAcross: 0, chord: null };
+    var pair = a0Pair(corners, border, frac);
+    if (!pair) { return out; }
+    var sg = pair.sg12;
+    out.sideLen = sg.len;
+    out.chord = [pair.a03, pair.a12];
+    var street = Math.sqrt(Math.pow(corners[1][0] - corners[0][0], 2) +
+                           Math.pow(corners[1][1] - corners[0][1], 2));
+    out.street = street;
+    var fullFacade = !!o.fullFacade;
+    // local_21b5: narrow-branch entry.  bVar16: shape test; only a plot whose
+    // P1->P2 (or P0->P3) side leans along P0->P1 takes the stepped fit;
+    // otherwise the normal fit runs even though local_21b5 is set.
+    var steppedBranch = (level >= 4 && street < 2100.0 &&
+                         !(street >= 1275.0 && frac >= 0.5));
+    var anchorLeft = false;
+    var stepped = false;
+    if (steppedBranch) {
+      var d01 = unit2(corners[1][0] - corners[0][0], corners[1][1] - corners[0][1]);
+      var d12 = unit2(corners[2][0] - corners[1][0], corners[2][1] - corners[1][1]);
+      var d03 = unit2(corners[3][0] - corners[0][0], corners[3][1] - corners[0][1]);
+      var cos12 = d12[0] * d01[0] + d12[1] * d01[1];
+      var cos03 = d03[0] * d01[0] + d03[1] * d01[1];
+      var threshold = 0.25 - (street < 900.0 ? 0.2 : 0.0);
+      if (cos12 > threshold && cos03 > 0.0) {
+        stepped = true;
+      } else if (cos12 < 0.0 && cos03 < -threshold) {
+        stepped = true;
+        anchorLeft = true;
+      }
+      out.cos12 = cos12; out.cos03 = cos03; out.threshold = threshold;
+    }
+    out.steppedBranch = steppedBranch;
+    out.stepped = stepped;
+    out.anchorLeft = anchorLeft;
+    out.fullFacade = fullFacade;
+
+    var prim = null, hAlong = 0, hAcross = 0;
+    if (!stepped) {
+      out.branch = "normal";
+      hAlong = halfAlong;
+      hAcross = halfAcross;
+      for (var k = 0; k < iters; k++) {
+        var s = start + step * k;
+        if (s > sg.len - hAlong) { break; }
+        var pd = sg.arc(s);
+        if (!pd) { break; }
+        var res = slideUntilClear(sg.pts, pd[0], pd[1], hAcross, hAlong,
+                                  [out.chord]);
+        if (res.ok) {
+          prim = { c0: res.c0, dir: pd[1], slide: res.slide, arc: s };
+          break;
+        }
+      }
+    } else if (anchorLeft) {
+      // 2255-2327: walk P3->P0 from len-330, step -25, 60 iterations,
+      // halfAlong 330, halfAcross = 0.35*chord*0.5 (or chord*0.5 full facade).
+      out.branch = "stepped-anchor-left";
+      hAlong = 330.0;
+      var sg30 = pair.sg30;
+      var v03 = unit2(corners[3][0] - corners[0][0], corners[3][1] - corners[0][1]);
+      var hsL = linePolyHits(pair.a03, [-v03[1], v03[0]], border);
+      if (hsL.length !== 2) {
+        out.reason = "A0 chord has " + hsL.length + " border crossings";
+        out.halfAlong = hAlong;
+        return out;
+      }
+      var chordLenL = Math.sqrt(Math.pow(hsL[1][0] - hsL[0][0], 2) +
+                                Math.pow(hsL[1][1] - hsL[0][1], 2));
+      hAcross = chordLenL * (fullFacade ? 0.5 : 0.35 * 0.5);
+      out.chordHits = hsL;
+      var startL = sg30.len - hAlong;
+      for (var kL = 0; kL < 60; kL++) {
+        var sL = startL - 25.0 * kL;
+        if (sL < Math.min(startL, hAlong)) { break; }
+        var pdL = sg30.arc(sL);
+        if (!pdL) { break; }
+        var resL = slideUntilClear(sg30.pts, pdL[0], pdL[1], hAcross, hAlong,
+                                   [border]);
+        if (resL.ok) {
+          prim = { c0: resL.c0, dir: pdL[1], slide: resL.slide, arc: sL };
+          break;
+        }
+      }
+      out.anchorLeftFacadeUnmodelled = true;
+    } else {
+      out.branch = "stepped";
+      hAlong = 330.0;
+      var ux = corners[2][0] - corners[1][0], uy = corners[2][1] - corners[1][1];
+      var L = Math.sqrt(ux * ux + uy * uy);
+      ux /= L; uy /= L;
+      var hs = linePolyHits(pair.a12, [-uy, ux], border);
+      if (hs.length !== 2) {
+        out.reason = "A0 chord has " + hs.length + " border crossings";
+        out.halfAlong = hAlong;
+        return out;
+      }
+      var chordLen = Math.sqrt(Math.pow(hs[1][0] - hs[0][0], 2) +
+                               Math.pow(hs[1][1] - hs[0][1], 2));
+      var measure = fullFacade ? chordLen : chordLen * 0.5;
+      var decay = measure * 0.1;
+      out.chordHits = hs;
+      for (var attempt = 0; attempt < 10; attempt++) {
+        hAcross = (measure - decay * attempt) * 0.5;
+        var found = null;
+        for (var q = 0; q < 6 * attempt; q++) {
+          var s2 = 30.0 * q;
+          if (s2 > sg.len - hAlong) { break; }
+          var pd2 = sg.arc(s2);
+          if (!pd2) { break; }
+          var res2 = slideUntilClear(sg.pts, pd2[0], pd2[1], hAcross, hAlong,
+                                     [border]);
+          if (res2.ok) {
+            found = { c0: res2.c0, dir: pd2[1], slide: res2.slide, arc: s2,
+                      attempt: attempt };
+            break;
+          }
+        }
+        if (found) { prim = found; break; }
+      }
+    }
+    out.halfAlong = hAlong;
+    out.halfAcross = hAcross;
+    if (prim) {
+      out.primary = prim;
+      out.primaryShape = rectOutline(prim.c0, prim.dir, houseAlong, houseAcross);
+      out.houseShape = rectOutline(prim.c0, prim.dir, hAlong, hAcross);
+    }
+    if (o.secondary) {
+      out.secondary = { c0: o.secondary.c0, dir: o.secondary.dir, slide: null, arc: null };
+      out.secondaryShape = rectOutline(o.secondary.c0, o.secondary.dir, secAlong, secAcross);
+    }
+    return out;
+  }
+
+  // ------------------------------------------------------- secondary (B-part)
+  // constructResidential's B-part fit: side P3->P0, start len-900, step -50,
+  // 20 iterations, 230 half ACROSS x 400 half ALONG, slide +20 up to 24.
+  //
+  // obstacle1 (RDX at 0x144d04fe5) is the A-PART FACADE CHORD: the points at
+  // arc 180 + 70*frac measured from P1 on P1->P2 and from P0 on P0->P3
+  // (the P3->P0 copy is reversed in place at 1310-1330; built at 0x144d00835).
+  // The same A0 points feed the cut segment at
+  // 2705-2718 whose FieldPoints intersections become backFacade (C0/C1), so
+  // the secondary facade and the extension cut share one chord.  The chord is
+  // near the STREET corners; a candidate whose box crosses it is REJECTED (the
+  // fitter steps to the next s), never slid.  The fitter tests the walked side
+  // and the obstacles, not the whole border.  obstacle2 is empty.
+  //
+  // The A preview facade and the A house box are NOT in this obstacle set, so
+  // B is not packed against A by the fit.  On a fresh plot the fit accepts at
+  // its first candidate (side length - 900).
+  //
+  // The spawn transform also gets a caller adjustment X*matrix_column(euler)
+  // (0x144d0703b-0x144d07162); the live taper shows +450 along / +20 across =
+  // the half extents of the selected B mesh (key 0x1cd = 900), not a fit
+  // squeeze.  Mesh selection is not ported, so pivot defaults to 0.
+  // Quat yaw = side-90 is measured (9/9 live caches).
+  function fitSecondary(corners, border, opts) {
+    var o = opts || {};
+    var frac = o.frac === undefined ? 0.5 : o.frac;
+    var start = o.start === undefined ? 900.0 : o.start;
+    var step = o.step === undefined ? -50.0 : o.step;
+    var iters = o.iters === undefined ? 20 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 230.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 400.0 : o.halfAlong;
+    var pivotAlong = o.pivotAlong === undefined ? 0.0 : o.pivotAlong;
+    var pivotAcross = o.pivotAcross === undefined ? 0.0 : o.pivotAcross;
+    var useGate = !!o.gate;
+    var trace = o.trace || {};
+    var street = Math.sqrt(Math.pow(corners[1][0] - corners[0][0], 2) +
+                           Math.pow(corners[1][1] - corners[0][1], 2));
+    // same branch rule as fitHouses (level 4 assumed; the garden building
+    // level is not derivable from the plot)
+    var houses = fitHouses(corners, border, { frac: frac });
+    var stepped = houses.stepped;
+    var anchorLeft = houses.anchorLeft;
+    var sg = sideGeometry(border, corners[3], corners[0]);
+    if (!sg) {
+      trace.reason = "P3\u2192P0 side extraction failed";
+      return null;
+    }
+    var pair = a0Pair(corners, border, frac);
+    var extras = [];
+    if (pair) { extras.push([pair.a12, pair.a03]); }
+    // The engine's only B-fit obstacle is the A0 chord built above (the two
+    // near-street points at 180 + 70*frac); `constructResidential` 0x144d04fe5
+    // passes that 2-point array as RDX and leaves obstacle2 empty.  There is no
+    // A house facade / A preview line in the B obstacle set, so B is NOT packed
+    // against A by this fit; it accepts at its start (side length - 900) unless
+    // the A0 chord actually crosses the box.
+    // local_21b7 gate.  Not universal: the gate block runs only when
+    // bVar52 == 0 - on a fresh plot that means the building has a type-0xc
+    // extension.  The page default has none, so the gate is skipped unless
+    // useGate is set explicitly.
+    if (useGate && stepped && !anchorLeft) {
+      if (!bpartFacadeGate(houses.primary, houses.halfAcross,
+                           extras.length ? extras[0][1] : null,
+                           extras.length ? extras[0][0] : null, sg.pts)) {
+        trace.gate = false;
+        trace.reason = "local_21b7 facade gate failed";
+        return null;
+      }
+      trace.gate = true;
+    } else {
+      trace.gate = null;
+    }
+    for (var k = 0; k < iters; k++) {
+      var s = sg.len - start + step * k;
+      if (s < 0) {
+        trace.reason = "start past the P3\u2192P0 side (side too short)";
+        return null;
+      }
+      var pd = sg.arc(s);
+      if (!pd) {
+        trace.reason = "P3\u2192P0 arc point failed at s=" + Math.round(s);
+        return null;
+      }
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], halfAcross, halfAlong, extras);
+      if (!res.ok) { continue; }
+      var d = pd[1];
+      var px = d[1], py = -d[0];
+      var origin = [res.c0[0] + pivotAlong * d[0] + pivotAcross * px,
+                    res.c0[1] + pivotAlong * d[1] + pivotAcross * py];
+      return { c0: res.c0, origin: origin, dir: d, slide: res.slide, arc: s,
+               sideLen: sg.len, obstacle: extras.length ? extras[0] : null,
+               stepped: stepped,
+               yaw: Math.atan2(d[1], d[0]) - Math.PI * 0.5,
+               shape: rectOutline(res.c0, d, halfAlong, halfAcross) };
+    }
+    trace.reason = "no candidate cleared the P3\u2192P0 side";
+    return null;
+  }
+
+  // ------------------------------------------------------- preview A transform
+  // The A decal fit in FUN_144b59950 (single-plot branch, decompile 74215):
+  // walk P1->P2, obstacle1 = the whole plot border, start 700, step 50,
+  // A decal fit (FUN_144b59950 95922): walk P1->P2, start 700, step 25,
+  // 20 candidates, 350 half ACROSS x 600 half ALONG.  The sweep can only reach
+  // arc 1175, so a plot whose first clear station is beyond that gets NO A at
+  // all (the house is dropped, not pushed back).  The 50/30 budget belongs to
+  // the single-plot fallback, not this path.
+  function previewA(corners, border, opts) {
+    var o = opts || {};
+    var start = o.start === undefined ? 700.0 : o.start;
+    var step = o.step === undefined ? 50.0 : o.step;
+    var iters = o.iters === undefined ? 30 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 350.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 600.0 : o.halfAlong;
+    var trace = o.trace || {};
+    var sg = sideGeometry(border, corners[1], corners[2], []);
+    if (!sg) { trace.reason = "P1\u2192P2 side extraction failed"; return null; }
+    // Obstacle1 = local_908: reversed DA (extractSmoothSide(corner[3], corner[0]))
+    // with trimSmoothSide(AB, seg, 0) appended at 1475-1483 -> DA plus the street
+    // side.  DA alone leaves the house at 700 where the box pokes out through the
+    // street; AB alone loses s2.
+    var daSide = extractSide(border, corners[3], corners[0], trace.notes || []);
+    var abSide = extractSide(border, corners[0], corners[1], trace.notes || []);
+    var extras = [];
+    if (daSide && daSide.length >= 2) { extras.push(daSide); }
+    if (abSide && abSide.length >= 2) { extras.push(abSide); }
+    var rejected = [];
+    for (var k = 0; k < iters; k++) {
+      var s = start + step * k;
+      if (s > sg.len - halfAlong) { break; }
+      var pd = sg.arc(s);
+      if (!pd) { break; }
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], halfAcross, halfAlong,
+                                extras);
+      if (!res.ok) { rejected.push(s); continue; }
+      var out = { c0: res.c0, origin: res.c0, dir: pd[1], slide: res.slide,
+                  arc: s, sideLen: sg.len, rejected: rejected,
+                  shape: rectOutline(res.c0, pd[1], halfAlong, halfAcross) };
+      trace.arc = s; trace.rejected = rejected;
+      return out;
+    }
+    trace.rejected = rejected;
+    trace.reason = "no A preview candidate cleared the border within " + iters +
+                   " x " + step + " (max arc " + (start + step * (iters - 1)) + ")";
+    return null;
+  }
+
+  // ------------------------------------------------ preview B (FUN_144b43280)
+  // The preview decal path is NOT constructResidential's B fit.  FUN_144b59950
+  // calls FUN_144b43280 per extracted sub-plot:
+  //   walk P3->P0, start len-800, step -50, 12 iterations,
+  //   half ACROSS 200, half ALONG 300,
+  //   obstacle1 = the whole plot border,
+  //   obstacle2 = the A-preview box (700 x 1200 around the A transform).
+  // After a candidate clears, the line through its centre along the ACROSS
+  // normal, +/-5000, must not intersect the A box; if it does, the B transform
+  // is zeroed and the decal spawner skips it.
+  // Live 2026-11-08 validation: rejects 11 candidates and accepts at
+  // arc 1875.3315, c0 (60917.567, -22047.264) -- the live B decal exactly.
+  function previewSecondary(corners, border, aOrigin, aDir, trace) {
+    trace = trace || {};
+    var ax = -aDir[1], ay = aDir[0];
+    var abox = [
+      [aOrigin[0] - 600.0 * aDir[0] - 350.0 * ax,
+       aOrigin[1] - 600.0 * aDir[1] - 350.0 * ay, 0],
+      [aOrigin[0] + 600.0 * aDir[0] - 350.0 * ax,
+       aOrigin[1] + 600.0 * aDir[1] - 350.0 * ay, 0],
+      [aOrigin[0] + 600.0 * aDir[0] + 350.0 * ax,
+       aOrigin[1] + 600.0 * aDir[1] + 350.0 * ay, 0],
+      [aOrigin[0] - 600.0 * aDir[0] + 350.0 * ax,
+       aOrigin[1] - 600.0 * aDir[1] + 350.0 * ay, 0]
+    ];
+    abox.push(abox[0]);
+    var sg = sideGeometry(border, corners[3], corners[0], []);
+    if (!sg || sg.len <= 600.0) {
+      trace.reason = "P3\u2192P0 side <= 600";
+      return null;
+    }
+    var bpts = border.map(function (p) { return [p[0], p[1], p[2]]; });
+    var extras = [bpts, abox];
+    var rejected = [];
+    for (var k = 0; k < 12; k++) {
+      var s = sg.len - 800.0 - 50.0 * k;
+      if (s < 0.0) { break; }
+      var pd = sg.arc(s);
+      if (!pd) { break; }
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], 200.0, 300.0, extras);
+      if (!res.ok) { rejected.push(s); continue; }
+      var d = pd[1];
+      // 0x144b434be: segment c0 -> c0 + 5000*(dir.y,-dir.x), dir = the fitted
+      // quat forward (= the across normal), so (dir.y,-dir.x) = -walk.  One-sided
+      // along the back of the walk, not the +/-across line.  A hit overwrites the
+      // whole B transform with the identity (translation 0) and does NOT continue
+      // the sweep: B is dropped.
+      var a = [res.c0[0], res.c0[1], 0];
+      var b = [res.c0[0] - 5000.0 * d[0], res.c0[1] - 5000.0 * d[1], 0];
+      var hit = false;
+      for (var i = 0; i < abox.length - 1; i++) {
+        if (segSeg(a, b, abox[i], abox[i + 1]) !== null) { hit = true; break; }
+      }
+      if (hit) {
+        trace.arc = s; trace.c0 = res.c0; trace.dir = d; trace.slide = res.slide;
+        trace.rejected = rejected.concat([s]); trace.lineHit = true;
+        trace.aBox = abox; trace.lineSeg = [a, b];
+        trace.reason = "post-fit A-box line hit \u2014 B transform zeroed";
+        return null;
+      }
+      trace.arc = s; trace.c0 = res.c0; trace.dir = d; trace.slide = res.slide;
+      trace.rejected = rejected; trace.lineHit = false; trace.aBox = abox;
+      return { c0: res.c0, origin: res.c0, dir: d, slide: res.slide, arc: s,
+               sideLen: sg.len, rejected: rejected, lineHit: false,
+               aBox: abox, shape: rectOutline(res.c0, d, 300.0, 200.0) };
+    }
+    trace.rejected = rejected;
+    trace.reason = "no candidate cleared the preview A box";
+    return null;
+  }
+
+  function arcPointOrLast(sg, s) {
+    var pd = sg.arc(Math.min(s, sg.len));
+    if (pd) { return pd[0]; }
+    return sg.pts && sg.pts.length ? sg.pts[sg.pts.length - 1] : null;
+  }
+
+  // local_21b7 facade gate: line through the A-part transform along its normal
+  // must cross (1) the P3->P0 side exactly once and (2) the
+  // [A0(P0->P3), P2] segment exactly once.
+  function lineSegHitCount(p, d, a, b) {
+    var rx = d[0], ry = d[1];
+    var sx = b[0] - a[0], sy = b[1] - a[1];
+    var den = rx * sy - ry * sx;
+    if (Math.abs(den) < 1e-12) { return 0; }
+    var qx = a[0] - p[0], qy = a[1] - p[1];
+    var u = (qx * ry - qy * rx) / den;
+    return (u >= -1e-9 && u <= 1 + 1e-9) ? 1 : 0;
+  }
+  function linePolyHits(p, d, pts) {
+    var hits = [];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      var rx = d[0], ry = d[1];
+      var sx = b[0] - a[0], sy = b[1] - a[1];
+      var den = rx * sy - ry * sx;
+      if (Math.abs(den) < 1e-12) { continue; }
+      var qx = a[0] - p[0], qy = a[1] - p[1];
+      var t = (qx * sy - qy * sx) / den;
+      var u = (qx * ry - qy * rx) / den;
+      if (u >= -1e-9 && u <= 1 + 1e-9) {
+        var x = p[0] + t * rx, y = p[1] + t * ry;
+        var seen = false;
+        for (var k = 0; k < hits.length; k++) {
+          if (Math.pow(x - hits[k][0], 2) + Math.pow(y - hits[k][1], 2) < 1e-8) {
+            seen = true; break;
+          }
+        }
+        if (!seen) { hits.push([x, y]); }
+      }
+    }
+    return hits;
+  }
+  function linePolyHitCount(p, d, pts) {
+    return linePolyHits(p, d, pts).length;
+  }
+  // local_21b7 gate, current build (decompile 1764-2065):
+  //   axis = the fitter's ACROSS direction, perp = (dir.y, -dir.x)
+  //   base = c0 + halfAcross*axis  (the box's far edge)
+  //   seg  = [base, base + 10000*axis]
+  //   check 1: seg vs P3->P0 side              count == 1
+  //   check 2: seg vs A0 chord [a03, a12]      count == 1
+  // Runs only in the stepped ANCHOR-RIGHT block.
+  function bpartFacadeGate(prim, halfAcross, a03, a12, sidePts) {
+    if (!prim || !a03 || !a12) { return false; }
+    var px = prim.dir[1], py = -prim.dir[0];
+    var base = [prim.c0[0] + halfAcross * px, prim.c0[1] + halfAcross * py];
+    if (linePolyHitCount(base, [px, py], sidePts) !== 1) { return false; }
+    if (lineSegHitCount(base, [px, py], a03, a12) !== 1) { return false; }
+    return true;
+  }
+
+  // ---------------------------------------------------------------- cut tree
+  function buildBeds(corners, frac, profile, opts) {
+    var o = opts || {};
+    var noOffset = !!o.noOffset;
+    var notes = [];
+    var modes = [];
+    var c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
+    var prof = profile || [c0, c1, c2, c3, c0];
+
+    function cut(tag, pf, cn, seg) {
+      var before = notes.length;
+      var r = slicePlotInHalf(pf, cn, seg, notes);
+      if (!r || !r.r) {
+        return { ok: false, err: tag + " failed: " + (notes.slice(before).join("; ") || "no intersection") };
+      }
+      modes.push(r.mode);
+      return { ok: true, r: r.r, mode: r.mode };
+    }
+
+    var mAB = mid(c0, c1), mCD = mid(c2, c3);
+
+    var r1 = cut("cut1", prof, corners, stretch([mAB, mCD], 100.0));
+    if (!r1.ok) { return { ok: false, error: r1.err, notes: notes }; }
+    var A1poly = r1.r[0], A1c = r1.r[1], B1poly = r1.r[2], B1c = r1.r[3];
+    if (A1c.length < 4 || B1c.length < 4) {
+      return { ok: false, error: "cut1: fewer than 4 corners on a side", notes: notes };
+    }
+
+    var seg2 = stretch([lerpPt(B1c[0], B1c[1], 0.8), lerpPt(B1c[3], B1c[2], 0.8)], 10.0);
+    var r2 = cut("cut2", B1poly, B1c, seg2);
+    if (!r2.ok) { return { ok: false, error: r2.err, notes: notes }; }
+    var A2poly = r2.r[0], A2c = r2.r[1], B2poly = r2.r[2], B2c = r2.r[3];
+
+    var f3 = lerpParam(0.6, 0.8, frac);
+    var seg3 = stretch([lerpPt(B2c[1], B2c[2], f3), lerpPt(B2c[0], B2c[3], f3)], 100.0);
+    var r3 = cut("cut3", B2poly, B2c, seg3);
+    if (!r3.ok) { return { ok: false, error: r3.err, notes: notes }; }
+    var bed1 = r3.r[0], bed1c = r3.r[1], B3poly = r3.r[2], B3c = r3.r[3];
+    if (B3c.length === 0) {
+      return { ok: false, error: "fieldLeftB_corners num = 0, abort", notes: notes };
+    }
+
+    var f4 = lerpParam(0.7, 0.9, frac);
+    var seg4 = stretch([lerpPt(B3c[0], B3c[1], f4), lerpPt(B3c[3], B3c[2], f4)], 100.0);
+    var r4 = cut("cut4", B3poly, B3c, seg4);
+    if (!r4.ok) { return { ok: false, error: r4.err, notes: notes }; }
+    var A4poly = r4.r[0], A4c = r4.r[1], bed2 = r4.r[2], bed2c = r4.r[3];
+
+    var bed3 = null, shed = null;
+    if (bed2c.length !== 0) {
+      var f5 = 1.0 - lerpParam(0.6, 0.8, frac);
+      var seg5 = stretch([lerpPt(A1c[1], A1c[2], f5), lerpPt(A1c[0], A1c[3], f5)], 100.0);
+      var r5 = cut("cut5", A1poly, A1c, seg5);
+      if (!r5.ok) { return { ok: false, error: r5.err, notes: notes }; }
+      var A5poly = r5.r[0], A5c = r5.r[1];
+      bed3 = r5.r[2];
+
+      var f6 = lerpParam(0.1, 0.2, frac);
+      var seg6 = stretch([lerpPt(A5c[0], A5c[1], f6), lerpPt(A5c[3], A5c[2], f6)], 100.0);
+      var r6 = cut("cut6", A5poly, A5c, seg6);
+      if (!r6.ok) { return { ok: false, error: r6.err, notes: notes }; }
+      shed = r6.r[0];
+    }
+
+    var off = [0, 0, 0];
+    var d = sub(mAB, mCD);
+    var mag = Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+    if (mag > 1e-4 && !noOffset) {
+      off = [d[0] / mag * 150.0, d[1] / mag * 150.0, 0];
+      bed1 = bed1.map(function (p) { return add(p, off); });
+      if (shed) { shed = shed.map(function (p) { return add(p, off); }); }
+    }
+
+    return { ok: true, bed1: bed1, bed2: bed2, bed3: bed3, shed: shed,
+             offset: off, modes: modes, notes: notes };
+  }
+
+  // ------------------------------------------------ vegetable plant grid (v6)
+  // Engine FUN_144d43610 rasterises the extension on a 100-unit grid, keeps
+  // centres inside the bed triangulation, and rejects points within
+  // sqrt(5000) ~= 70.7 units of a raw bed edge.  This is the 392-plant path,
+  // not the shrub scatter.
+  //
+  // Frame validated on two live Type-8 gardens (2026-11-06, 28/28 and 27/27):
+  // the scan box is the WORLD-axis bbox of the extension border, its centre is
+  // the origin, the lattice offsets are the extension quat = plot frame yawed
+  // -90 deg (e1 = (uy,-ux) across the plot, e2 = (ux,uy) along P1->P2), and the
+  // half counts are int(worldExtent/step), not half the extent.
+  function plantGrid(beds, quad, profile, opts) {
+    var o = opts || {};
+    var step = o.step === undefined ? 100.0 : o.step;
+    var inset2 = o.inset2 === undefined ? 5000.0 : o.inset2;
+    if (!beds || !quad || quad.length < 4) { return null; }
+    var u = unit2(quad[2][0] - quad[1][0], quad[2][1] - quad[1][1]);
+    if (u[0] === 0 && u[1] === 0) { return null; }
+    var src = (profile && profile.length) ? profile : quad;
+    var minX = 1e30, maxX = -1e30, minY = 1e30, maxY = -1e30;
+    src.forEach(function (p) {
+      minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+      minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+    });
+    var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    var nx = Math.floor((maxX - minX) / step);
+    var nz = Math.floor((maxY - minY) / step);
+    var e1x = u[1], e1y = -u[0];
+    var list = [beds.bed1, beds.bed2, beds.bed3].filter(Boolean);
+    var fallback = false;
+    // No bed records -> the engine rasterises the EXTENSION polygon itself and
+    // has no bed edges to inset against.  Live 2026-11-09 (P2-corner extension,
+    // 0 bed records): 188/188 cells exact with inset 0.
+    if (!list.length) {
+      list = [quad];
+      inset2 = 0.0;
+      fallback = true;
+    }
+    var pts = [];
+    for (var i = -nx; i <= nx; i++) {
+      for (var j = -nz; j <= nz; j++) {
+        var s = (i + 0.5) * step;
+        var t = (j + 0.5) * step;
+        var p = [cx + e1x * s + u[0] * t, cy + e1y * s + u[1] * t, 0];
+        for (var b = 0; b < list.length; b++) {
+          var poly = list[b];
+          if (!pointInPoly(p, poly)) { continue; }
+          var near = false;
+          for (var k = 0; k < poly.length - 1; k++) {
+            if (dist2ToSeg(p, poly[k], poly[k + 1]) < inset2) { near = true; break; }
+          }
+          if (!near) { pts.push([p[0], p[1]]); }
+          b = list.length;
+        }
+      }
+    }
+    var edges = 0;
+    list.forEach(function (poly) { edges += edgeCount(poly); });
+    return { count: pts.length, points: pts, bedEdges: edges, step: step,
+             inset: Math.sqrt(inset2), fallbackExtension: fallback };
+  }
+
+  // ------------------------------------------------ shrub scatter expectation
+  // Engine: FUN_144d494e0 samples 6 points per polygon edge, accepts 30%, and
+  // skips points within 300 units of the gate.  This is the shrubMesh<i> path.
+  function shrubStats(beds, opts) {
+    var o = opts || {};
+    var density = o.density === undefined ? 6 : o.density;
+    var accept = o.accept === undefined ? 0.3 : o.accept;
+    var edges = 0;
+    [beds && beds.bed1, beds && beds.bed2, beds && beds.bed3, beds && beds.shed]
+      .filter(Boolean).forEach(function (poly) { edges += edgeCount(poly); });
+    return { edges: edges, candidates: edges * density,
+             expected: edges * density * accept, density: density, accept: accept };
+  }
+
+  // ---------- vegetable-garden shed mesh (updateSubfield -> FUN_144d39e90)
+  // The shed mesh is NOT placed from the cut-6 "shed" polygon: the engine
+  // extracts the C1->P2 side of the extension and walks it.
+  //   arc   200.0 from C1 (0x1471dadd0); the tangent is sampled at arc + 50.0
+  //         (0x1471c03a0) so a bent side still yields a local direction;
+  //   half  150.0 (0x1471c5970) => a 300 x 300 square placed FLUSH on the side
+  //         (near edge on the line, 0..2*half outward), centre A + half*perp;
+  //   slide +20.0 per iteration (0x14720bae8), max 50, until none of the box
+  //         edges 0,1,2 intersects the side (inclusive test).
+  // The transform translation is that pushed centre; the yaw is built from
+  // perp = (d.y, -d.x), the same across normal the house fitters use.
+  var SHED_ARC = 200.0, SHED_SAMPLE = 50.0, SHED_HALF = 150.0,
+      SHED_STEP = 20.0, SHED_ITERS = 50;
+
+  function shedMesh(profile, extCorners) {
+    var sg = sideGeometry(profile, extCorners[1], extCorners[2], []);
+    if (!sg) { return null; }
+    var A = arcPointOrLast(sg, SHED_ARC);
+    var B = arcPointOrLast(sg, SHED_ARC + SHED_SAMPLE);
+    if (!A || !B) { return null; }
+    var dx = B[0] - A[0], dy = B[1] - A[1];
+    var L = Math.sqrt(dx * dx + dy * dy);
+    if (L < 1e-9) { return null; }
+    dx /= L; dy /= L;
+    var px = dy, py = -dx, half = SHED_HALF;
+    var cx = A[0] + half * px, cy = A[1] + half * py;
+    var pts = sg.pts;
+    function box(k) {
+      var ox = cx + k * SHED_STEP * px, oy = cy + k * SHED_STEP * py;
+      var p0 = [ox - half * dx, oy - half * dy];
+      var p1 = [p0[0] + 2 * half * px, p0[1] + 2 * half * py];
+      var p2 = [p1[0] + 2 * half * dx, p1[1] + 2 * half * dy];
+      var p3 = [p2[0] - 2 * half * px, p2[1] - 2 * half * py];
+      return [p0, p1, p2, p3];
+    }
+    function hits(poly) {
+      for (var e = 0; e < 3; e++) {          // p3->p0 is not tested
+        var a = poly[e], b = poly[(e + 1) % 4];
+        for (var i = 0; i < pts.length - 1; i++) {
+          if (segSeg(a, b, pts[i], pts[i + 1])) { return true; }
+        }
+      }
+      return false;
+    }
+    var k = 0;
+    while (k < SHED_ITERS) {
+      k++;
+      if (!hits(box(k))) { break; }
+    }
+    return { origin: [cx + k * SHED_STEP * px, cy + k * SHED_STEP * py],
+             dir: [dx, dy], perp: [px, py], box: box(k), pushes: k,
+             arc: SHED_ARC, half: half };
+  }
+
+var API = {
+    V: V, add: add, sub: sub, mul: mul, mid: mid, lerpPt: lerpPt, unit2: unit2,
+    segSeg: segSeg, sideCrosses: sideCrosses, trimSide: trimSide, extractSide: extractSide,
+    stretch: stretch, lerpParam: lerpParam, slicePlotInHalf: slicePlotInHalf,
+    cornerCut: cornerCut,
+    engineBorder: engineBorder, rectOutline: rectOutline, nearestOnPoly: nearestOnPoly,
+    boxHits: boxHits, sideGeometry: sideGeometry, slideUntilClear: slideUntilClear,
+    pointInPoly: pointInPoly, isSimpleQuad: isSimpleQuad, winding: winding,
+    buildExtensionForPlot: buildExtensionForPlot, generateExtension: generateExtension,
+    shedMesh: shedMesh,
+    fitHouses: fitHouses, fitSecondary: fitSecondary, previewA: previewA, previewSecondary: previewSecondary, buildBeds: buildBeds, plantGrid: plantGrid,
+    shrubStats: shrubStats, edgeCount: edgeCount
+  };
+
+  if (typeof module !== "undefined" && module.exports) { module.exports = API; }
+  root.BedsModel = API;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+</script>
+<script>
+(function () {
+  "use strict";
+  var START = [[0.0, 0.0, 0.0], [4600.0, 0.0, 0.0], [4600.0, -4600.0, 0.0], [0.0, -4600.0, 0.0]];
+  var STEP = 500.0;
+  var FRAME_B64 = "iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAIAAAB7GkOtAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAE5XSURBVHhe7d13WFZXvv/9OTNzkpkzk4lJxpQxGmPBLjas2EAURSnSe5HeQQQUEERBpHcFBKIgIEVBUVFREUXFgoolYi8xzSQTTyZPcuac8/ye69nfYf2W675BUwST9Xn9kctkJlFvr+v73nuttff9m9/8WP/2bH77zH73u9/9/ve//x0AwK+UOPW6II7RLohDuWeIvwqO+PvoxH7z4ufB+b1C/KcAAL98T51vNB7F0dlJHLVPEmf0cyL+tE8SfsXi76/zI+jKvwMA/HqpTjz+b/k52VUJxJnLEYf1z078CTuJv8bO0c//rthvuBsvAQD8qolT70lqeyCO157PgPiTdOJ/TSxc/O9BGPrih6F4GQDg1+gPf/iD+I8U4hBU0IRkJeB78INKII7vn0j8zyuEX4cw97sa+vxH8Icu/BEA4FdEnHGd+HlI+GnJT1Fh84CfveJo7iTO8R9B/E8q+J+bfjXC6Od/D/zQp9+z+Nn88Y//oc6fAAB+FcTppuBnYFdV6KYEwj6BOKYV4kD/QcT/mELt9Od/ffzQZ78l1VnPfzp/VucVAIBfBXG6/fnP/ABUrUL3JeAvuJ96NyCO9Wck/mcUbO7za/1PnfvCxKffP//p/EXFqwAAvxbigPvLX/gBKFShqxL8a0XlyRsCfkWIfiBO7R/RAPE/wF34q57nEUa/cLHPX+Dz457/dPpwXlPxOgDAi+qNN94Q/1EncZa99hqNODbuhDzwPWAx6KoENH5VHyz4GRog/Mv89OfXfNSOfv56nx/6/KxnHwd9TG9w/vrXv9Jfmb4AAC+wrsYUP8cIG3RCJGgw0pxkMVAtgZAB1gC2JMPuBoQZ/gMaIPxrT53+bLWHv+QXLvZp6PPjnv/I3lS8xXn7GbwDANDbxMGkDj/caNwJhaCpyN8ovPrqqzRCf1AGfmoDhH9Bdfqzcz78hb/a0S/Mffp9sonPD3r6HP/G6de1dwEAXkjitOrEJpuQDSEJLAZ0Z0AZ4JeG1GZAWBHqpgHiuBcI/+/upz/99MLoZ3OfjX4292no8+OePhr64PorBnDeU2cgAMCLShxYndhYo0HH14JVgXrASsDfE7CtApYBfm9AbQPY9Bamujj0ecL/tfvpTxf+VCR21c/mPlvk4ec+DX36zbMpP3DgwPc7Deo0uNOQrg0FAOht4mDqxIbY4MGD2WSjQcdqwapAPaAYqJaAbgj4Bvz5z3+mi2/WAGE5qJtHBMS5T4T/0zNOf+HCXxj9dJvD5j5d49PQZ4OeH+UaGhrDhg0bzhnRhZEAAC8AcTZ1YkNsWCcNBcsGCwMlgXoglIDPgLAoxN8KqN4H0OhW2wBx9Hcz/dno72b60+0JW/Dp27cvf8lPc58NfTbxadbTuKeBPkoxWjGm09guaAIAvADE2dSJDbExY8bQWKMRx7IxfPhwlgTqASsB3ROoZoDtDXTVAHYfQAF41s0A4X+mf+ep05/f6aW1frrqZ6OfrfAMHjyYv8BnE3/06NH0YWlqao4bN268YkKniZ0mAQC88Ni8YrOLRhlNtnEKygaFge/BsGHD+BLwNwTvvPMOWxSiFSF2TEi1AXQfoPr+OGHIP2X6Cyc+u5n+tOxDa/1soX/AgAHskn/o0KHDhg1jQ5+u69m4p49JSzF58uQpnaYqpimmAwD8QtDUYmiUTZkyZfLkyVpaWiwVFAZKAt0l8CWgBaKBAwdSBv72t7+xvQG+AXROVLUB/DNiPyAALBcsANQTtdOfLfuw6U9r/QMGDGBX/TT6aVWH5v6ECRMmTZrExj1N+enTp8+YMUNbW3tmp1mK2Yo5c+awHwAAvJhoTPFojtFMm6GgSFAVWBImTJjASjBq1Cj+hoDuBmhRiN0K0HKQ2vsAfiGom93g7gJA3fj9739P0//ll19mh/356U/7vbTsQxf+/fv3HzhwID/66ZKfrvfpSp+G/vTp02nc05SfM2eOjkJXV3fevHl6neY/aQEAwItKmFc0xOYpaL7NVVAYtBV0xzBlyhQtLa2JEyeOHz+ezwDtEAwePJhuBfr3789uBWhnWLgPYM8HPMuJIDEA7P/EX/4Liz/suCe79qfpzy78hwwZoqGhwY9+uuSfPHnytGnT6DJ/1qxZNPHZuJ8/f76+vv7ChQsXKQwMDBZ3WvIkw07CPwcA6HlsIglDiU0wA8WiRYv09fWpE1QFXV1dHR2dOXPm0C3CjBkz6J6A3RDwGeBvBagBau8D+IUgCoBwIujpAeBX/+luQu30p3V/2vKl/d7333+fX/PR1NQcP378pEmTpkyZQqOfzf158+bR5fzChQtp1tPHZ2RkZGxsbGJislRhqjDjmCvYDwAAeh0/kdiwovFFo2zp0qXGxsZGRkYUCarCwoULKQkUAyrBjBkz6IaAMkB3AyNHjhw2bNiQIUMGDRr03nvv0VrQO++8w+8HsHNB//Ef/8FuAlR3g/kA/KsB7G9YAFT3fvmlf/64JzvtM2jQoKFDhw4fPpwu/GnBZ/LkyVOnTqXRP3fuXF1dXT09PX19/UWLFtHQNzIyokFPn52FhYWlpaWVlZW1wsbGxraT3ZPsAQBeDMJ0srOzo6llY2NDo8zKysrS0tLCwoIKYWpqamJiYmxsTD0wMDDQ19en2wJaIKIMTJ48mRaFxo4dO2rUKNoVYA3429/+9tZbb7FzQcKGsOpu8L+Wd1RvAoTpz6/+s/c9sMt/Wvqn57zYtT8t+tP0Hzt2LF34s9E/Z84cuuTX19dfvHgxXeYvXbqUJr6VlRUNehrrjo6OTgpnZ2eXTss4rk9yc3MT/gkAQI/hRxA/qWh2OTs700BzdHR0cHCgPNjY2FhZWVEPKAaGhoZ0TzB//nx2N0B7xVpaWqwBw4cPZ/cB/fv3pz3hvn37skeFX3nlFWE3WHUnQE0AWBxUV//5Z76Epf9+/frRtf+QIUPY9J8wYYKWlhZNf1rw0dPTo6UeQ0PDpUuXmpmZ0dy3tbWliU+znj5Kd3d3Dw8PT09Pr07enXx9fX04vp38FOxvAQCeH2Ha8EOJsJHl5eXl6enpoXB3d6dIUBUcHR3t7e1tbW2tra0tLS3NzMxYBuhuQEdHZ/bs2dra2tSACRMm8A2gR8ZoLYjfDBB2g5/pJkAIAFv/4fd+2ckfWvyhjd8BAwbQ9B82bBib/rTsM3PmTLrwX7BgARv95ubm/Nynoe/u7k7jnma6v79/QEBAoCJIEdxpuSJEQT9m/2TFihXsrwAAzwk/ZNROJJpUNLKCgoICAwMDFJQNVgXqgYuLi5OTk729Pd0T8BlYsGAB3Qpoa2vTchA1YOTIkcOHD6eHxQYMGMA2hOldEfxNAP+6UHqqV/1NQFfbv8LqP13+09L/O++8079/fzrsr6GhwV/7T5s2TVtbm6Y/rfkYGxubmppaWlra2NjY29s7OTktW7aM5r6Pj4+fn5+/vz8NevooQ0NDwxTh4eErV65cpYiIiKC/diUSAOD5E0fPk2herVq1aqUiPDw8LCwsNDSUykFVoB54e3tTCZYtW+bs7EwZsLS0NDU1NTY2Xrx4Md0KsAbQWhDbE6azoezhAFoI6tOnD72aU9gJoACwt4R2FwDaAODXf/jVf1r8YRu/dOKTdn1p+rNr/4ULFy5ZssTExIQu/O3s7Njo9/b29vPzCwgICAoKookfHh5On1pkZOTq1aujFTExMWvWrIlVrF27lv6qap2C/zEAwPMgTp8n0bAiaxQxMTHR0dGrV6+meKxatSo8PDw0NDQkJIRK4Ovr6+XlRTcEzs7OdnZ2VlZW5ubmJiYmS5YsWbhwodoGjBgxgt8QZgtBancCul8FEgMgnP5kl/+090snf+jyny39a2pqTpo0iZ/+ixYtMjQ0pOlvY2Pj4ODg4uLi7u7u5eXl6+sbGBi4fPlymvsRERFRUVE07mNjY9etWxcXFxcfH79+/fqEhIQNisROSUlJycnJSQAALxKaSzSjaFht2LAhISFhvSIuLm7dunVUhejo6KioqIiICCrB8uXL+Qy4uLg4ODhYW1tbWFioNmDq1KkTJ07U1NQcPXo02xCmJwPYiSC2E8CeCeDPg3YZAP78D7/+Q+/7ZJf/9L4HuvynI/9jx46lE59s5Yeu/ZcuXWphYWFra+vo6Ojq6urp6enr6xsQEECjny72o6OjaejHx8cnJCQkJiYmJyenpKSkpqampaWlp6dnKDIzM7OysjIVWVlZ2dnZWQAAL57MzEyaWhkZGenp6WlpaampqSkpKcnJyZSE+Pj4devWsRKsWrUqLCyMMuDj4+Pp6enq6uro6Ghra2tpabl06VJDQ0O+AVOmTGGbAewmgF4Yp7oT0M1W8P8NALv8px1g1fUfOvuv9vJ/9OjRbPFn9uzZurq6+vr6NP3Nzc1tbW2dnJzc3Ny8vLz8/PyCgoJCQ0NXrlwZFRUVExOzdu3a+Pj4DRs2JCUlpaSkpKWl0azPzs7OycnZqNi0aVNeXl5+p4KCAvprQUHBZg79EwCAHqA6fNh0ys/Pz8vL29QpV0HXrBkZGWlpaSkpKUlJSQkJCXFxcWvXro2JiaEMrFixIigoyM/Pz8vLy9XV1cnJiRpA9wH6+vq6urqzZ8+ePn26lpbWuHHj6CaAdgKEI6H8g8HPFADh+H9X6z/s6Cft/Y4cOVJTU3PixIlTpkyZOXOmjo7OggULaNeXn/7e3t7+/v7BwcFhYWERERHR0dF0yZ+YmJiSkpKenk5DPzc3d9OmTfQ5FhYWFhUVFRcXf6DYotjKKQEA6FWlpaXsxzSXaFJt2bKFBldxcXFRUVFhYeHmzZspDBs3bszOzs7MzExLS0tOTk5MTIyPj1+7dm10dHRERATdCvj7+3t7e7u5uTk5OdnY2NB+wOLFixcsWKCjozNz5ky2EDRq1CgNDY1BgwYNGDCgX79+b7/9Nq0Cvfbaa6qrQF1tA6gJgOr6D539pye/Bg4cSJf/bO93+vTps2fPpsUfIyMjMzMza2trBwcHV1dXLy8vf3//kJCQ8PDwyMjINWvWxMXFbdiwITk5OS0tLSsrKzc3Ny8vj4Z+cXHxli1b6JMtU5SXl1d0qqys3L59e6U6VQAAPUUcQIrtnSoqKsoVZWVl27ZtKy0tpTYUFxcXFhYWFBTk5eXl5ORkZWWlp6enpKRs2LAhPj5+zZo1UVFR4eHhISEhAQEBdB9A+wFmZmZGRkaLFi2aN28e3QRMnjyZ7QYPGTJEeCZA7SrQUwKg9vkv/uEvfv2HLv9p9Z9O/evo6NDij6mpqZWVlb29/bJlyzw9Pf39/ZcvX07LPrGxsfHx8UlJSampqZmZmTT6N2/eXFxcvHXrVhr6FRUV27dvr6qqqq6urqmp2bFjx05Fbac6zi4F+wEAQA+gmcPPorq6Ojajamtrd+7cuWPHjpqamurqagpGRUVFWVlZaWkplWDz5s15eXm5ubmZmZmpqal0KxAbG7t69erw8PDly5f7+fl5enouW7bM3t7eysrK1NR0yZIlwk0APRqmoaHx/vvvs61geihM7SoQ/14gcQmID8BT139o9X/cuHHs8l9PT2/RokXGxsa08evs7Ozh4eHr6xscHBweHk7Tf/369cnJyenp6dnZ2Zs2baLRX1JSsm3btoqKiqqqqpqaGpr1u3bt2q3Yo9i7d+8+RcOT9gMA9BJhHDU0NNCY2qvYs2dPfX09BYOSUFNTU1VVVVFRsW3btq1bt7IMZGdnp6enJyUlrV+/PjY2NioqKiwsLDg42NfX18PDw9nZ2dbW1tzc3NjY2MDAQE9Pj90E0E7AsGHD2FYwWwXizwLx2wBdBoB/AZxqANSu/0yYMGHKlCna2tq0+k+X/9bW1o6OjrT0HxgYGBoaGhkZyaZ/RkZGTk5Ofn5+YWHh1q1b2ejfsWMHRZXGPX2aBw4cOHjwYGOnQ4rDiiMAAC8AmkgMjanGxsYDChple/fura+v3717d11d3Y4dO1gGtmzZUlRUlJ+fn5OTk5GRkZycvH79+jVr1kRGRoaGhgYGBtJmgKOjo7W1Nd0E6Ovr6+josONAY8aMGT58+NChQ/mHwlQPg6oGQFwCUn0AmD3/Jaz/DB06lLZ/6ez/rFmz+Mt/Ozs7FxcXWvwJCQlZtWpVTEwMrfykp6fn5uYWFBTQmk95eXllZWVNTU1dXV19ff3evXv3799/4MABmvWHDx9uamo6qjh27Fhzc/Px48ePHTvWouIEAEAP4ufP8ePH6a/kmKK5uZnGFxWisbHx4MGD+/fv37dvH8tAZWVleXl5SUkJNSA3NzcjIyMpKYn2A1atWhUSEuLv7+/p6eni4mJnZ2dhYWFsbMx2AqZNmzZp0iRNTc2RI0d2swrEtgFU3w6tfglI7Q4w//IfDQ0Ntv5Db3xjl/9WVlYODg5ubm4+Pj609L969ep169YlJiamp6fTtT8t+1RUVFRXV9fW1u7evXvfvn379+8/ePAgDf3m5mYa9CdOnDh58uSpU6daFac7nXnSWQCAHiSMoDNnzrDp1Nraekpx8uRJSgXrAZWAZaC2tra6urqioqK0tLS4uJjuA9LS0hITE+Pi4mgzICgoyMfHx83NjXaD2U7A3LlzZ8yYwc6DsrNA7Ikw1QDw+8BPCYCwA6y6ASCs/+jr6xsZGdFDv87OznT5v2LFCjr2k5CQkJKSkp2dnZeXV1RUVFJSsn379pqamtra2vr6+oaGhoMHDx45coSu9E+cOEETnyb7OUWb4rziAuciAECv4icSzai2trZz585RKigJFINjx44dPXqUMtDQ0FBfX19bW1tTU1NRUUH3AXl5eVlZWSkpKQkJCbGxsREREewmgO0EGBoaCqtAtA0wePBgfhuAvReIfymQ2oNAv1H7CiD+BXDs/T+0AcCe/p06deqsWbN0dXUNDAxMTEwsLCzs7e1dXV29vb2DgoLCwsJWr14dFxeXlJSUkZGxcePGwsLCkpKS8vLy6urquro6WvNpbGxsampio5/mPo17+nzb29svXbp0udMVzlUAgF7FTySaUZcuXWpXUBLa2tropuHUqVOUgaampkOHDu3fv3/Pnj11dXXV1dXbt2/funVrYWHhxo0baSGIvwnw9vZ2dXW1t7e3tLSkVSBdXd1Zs2bRWSDhMGg3+8C0zi8GgKa/cAaUAsC/AYICMHTo0BEjRrANADr/s3jx4qVLl1pZWTk6Orq7u/v6+i5fvjwiIiI2NjYhISE1NTU7O7ugoOCDDz4oKyurqqqqq6vbs2fP/v37Dx061Nzc3NLScvLkydOnT587d47mPk38K1eufKi4du1aR6frnBsAAL2En0WEZtS1a9c+/PBDygPF4OLFi+fPnz937hxl4Pjx483NzYcPH6YG0FpQWVnZBx98UFBQkJOTk5qampCQsGbNGroJ8PPzc3d3p63gpUuXLl68eP78+XPmzJk+ffqkSZPGjh1L74bjnwZQGwDVx8H+dQfAvwSCPwLEAiDsALMNgLlz5y5YsMDQ0NDMzIxOf3p6egYEBISGhkZFRa1bt45d/hcVFZWWllZWVu7cuXPPnj0NDQ00/dmFf1tbG41+mvs09GnK37x581an24o7AAAvBhpKt2/fphl18+ZNygOLwZUrVy5dukQZOHv27KlTp1paWlgD6uvrd+7cWVlZWVpaWlRURDcBiYmJa9eujYqKouNAtBVsa2trZmZmaGjIbwOwR4LZPjB7HEztQaCnB4C+A4DtANMRIH4HePz48fT2N7YBQOs/y5Yto/WflStXRkdHr1+/nlb/8/Pzt2zZUl5eXlNTs2vXroaGhsbGxqNHj7a0tLS2tp49e/bChQvt7e00+js6OtjQv3379l3FPcX9Tg8AAF4MbC7RmLp79y4LA8Wgo6ODMtDe3s434OjRo42NjbQnXFNTU15evmXLlvz8/Ozs7JSUlPj4+OjoaGEVyMLCwsjIiLYBZsyYwZ4GEPaB+QDQPvAPC4BwBEh4BIx2gGfOnKmrq0sHQC0tLe3t7d3c3IT1Hzr6WVhYWFpaun37drr8P3jwYFNT0/Hjx0+dOkXLPpcuXbp69SqNfpr7d+7coYn/4MGDjz766KHi406fAAC8GNhc+vjjjx8+fPjRRx9RGO7du0cZuHXr1o0bN2hd6NKlSxcuXKAGHD9+/MiRIwcPHtyzZw/dBJSUlBQWFubm5qanp2/YsCE2NpbOg/r6+tJZIHo9HG0D0D4wvROC3wemg0DCCyF+ZAC6OgJEO8Dz5s2jHWArKysnJycPDw8/Pz86/7N27dqkpKTMzMxNmzYVFxeXlZVVV1fv3r2bLf6cPHnyzJkzwvSnS37K6UcffcRm/aeKzz777PMnPQIA6A38IPpMQWOKVYFKcP/+/bt3796+ffvGjRvXrl2jBpw/f/7MmTMnT55sbm4+dOhQQ0PDrl27ampqaCcgLy8vMzOTzoNGRkauWLHC39/fw8PDycmJtgHokWB+H5jeDCocBPqpARDOgNIRoDFjxkycOJHtABsYGCxdutTa2pptALDzP7T+U1BQsGXLFnb5f+DAgSNHjhw/fvz06dNtbW208iNMf7rY/+STT+hjffTo0RedvuR8peD/CQBAz6PR9MUXX7A2sBhQBu7du8caQGtBbW1tp0+fbmlp4W8CKioq+FUgOgsUFhYWEBDg6ekpBIAeB6OXAo0YMaL7AKg9CPR/j4GqfQ8oBYB/CQQ7A0qvAJo/f/6SJUvMzMxsbGxcXFy8vLwCAwPDw8NpAyAtLS0nJ4dOf1ZWVtbV1e3bt49d/p89e/bixYu07k8rP3fv3n3w4MHDhw9p9NMF/hdffEGD/quvvvq74usnPQYA6HH8FKLR9Pe//50uSakEdP1KdwNsRYjWgi5fvkwLQewmYO/evXV1dbQKtHnz5tzc3NTU1PXr18fExNA2AHsawMzMjA4CseeBKQD8SVA6CPQDAqD2MWAhAPxLIKZPn84fAbKzs6MnAIKDg1euXEnPf6Wnp9P5H1r/2bVr1/79+w8fPkyr/21tbbT4c/36dbr2Z2s+/OhnQ58+9P/kfAMA0Hv4ccRXgUpAGfj888/5Bty+ffv69etXr16lm4DW1tbjx4/TcaDdu3dXVVWVlZUVFxdv3LgxLS1tw4YNa9asWblyZXBwsI+Pz7Jly/iDQOwkqKampmoAVO8A+CUg9jBwlwFgjwGrBoBeAjp37lx9fX1DQ0Nzc3MKgI+PD73/JzY2NjExMSMjIy8v74MPPigvL9+xY0d9fT2t/7S0tJw5c+bChQuXL1++du3arVu37ty5Q9f+tNDPRj+b++wT/wfnWwCAXsXGEZtRrAR///vfv/zyS7oV+PTTTx8+fEj7ATdv3uzo6KCbgDNnzrS0tDQ1NR04cGD37t07duyoqKigbQA6DEr7wPRyUFdXVzs7O3NzczoIxJ8EpW+I5B8F+MEBUH0MmD0Fxh4CoK+AZw8BUADoDCgdAQoJCYmIiGA7wHQAtKKigp3/OXr06MmTJ8+dO0frP/zlP638PHr06Msvv6TpT2nlx/3/86TvAAB6CT+L+B6we4Kvv/6abgU+++wzdhNw69atjo6Oq1evXrx4ka0C8dsAW7duzc/Pz8zMTEpKWrt2LT0ORgeB7O3tVQMwbtw4CgA9CtDNs2A/KQAaGhqjRo0aN27c5MmTWQCMjIzYGVA/P7+QkJDIyEh6A0RWVlZBQQG9/Ke2tnbv3r2NjY3Nzc10+rO9vf3q1as3bty4c+cObfx++umnn3/+OT/96ZKf5j7/uX8PAPDC4HtAGaAFosePH7P7AHYTQLvBdByora3t1KlTbBugtraWXgtRUFCQlZWVnJy8bt26qKgoeh6YAsAeBZg7d662tjY9CjBq1KgeDQA9BbZw4UJ6CMDBwcHd3Z3eARcVFRUXF5ecnJydnb158+bS0lJ6/cO+fftoA6C1tZVOf167du3mzZu090uX/7T4w6Y/RVV16P9Xp3/+85/sBwAAzxsbPgKhBKwB/E3AJ5988uDBg7t37966devatWuXL1+ms0DHjh07fPjwvn37aB+4tLR08+bN7CBQVFQUnQTlHwVgr4R77gHgvwmSAqClpSUEwNHR0cPDw9/fn14CQWdAc3JyWADoAWB2APT8+fOXL1/u6Oi4devWvXv36OQPW/yhRf9//OMfdOHPD33xT+Of//xvAIAeJM6gJ6vAGvDtt9/SlgDdBNDZ0IcPH9JjAR0dHVeuXKFtANoHbmhoqKurq6qqogDk5OSwk6ChoaH+/v70RiAKwMKFC4UAsLdB0NfC/PWvf+0mAGpOAT1jAPj3QFAA2FNgQgByc3MpAOwIEL8DzDYA7t279/HHHwuX/2zlh01//uP+7//+7//5n/8R/1gAAHoJHwP+PoDdBNBuMFsForNAFIATJ040NTXRQaDq6urS0lJ6Hjg1NZVeCEGPAlAArKysKAC6urozZ86kL4jv0QDQNwHQeyDYY8D0NQD0FFh8fDwFgF4CQc8AsyNA9AQA2wB48OABCwC7/Fed/vxn/T8AAL2Kn0V8A9h9AFsIopsAthXMbwOoBqCmpmbbtm1FRUVCANjDwBQA+mqwHg3AsGHD6E1w/IuAKACOjo7sMWB6Ciw1NTU3N7eoqGjbtm0UAHoF0IkTJ86ePcvvANMGANv+pct/tvjDpj/73P/3f/+X/zH9Lf0AAOB54ycPYdemrAHff/897QnTTQBbBaKzQOyJMDoIdOLEiaNHjx44cKC+vp4FgB4FWL9+PbsDoIeBWQDoDoBeB8S+Hb6nA8AvAQUGBvIBoKfAtm3bVlNTwwJAzwC3t7fTA8BsB/jzzz+ns/98AKilfGmFPwAAgF7EGiDcB9CGsOoqEL0cQgjAyZMnnxoAein0swSAXgja/Sbw0wPAfxkAvQtaNQDCm+D4O4C0tLSNGzfSa+Bqamrq6+v5hwAuXbpEAbh3795HH3306aefPnr0iN8AoPUf/vJf/OA5/y8AQA8SRpBqA/hVID4AbB/45s2bH374YXt7+7lz5ygABw8epADwDwMnJCTQ2yACAwM9PDycnZ2tra1NTEwMDAxoCYgFQHgj9M8fAPZlAEIArK2tVQPAvweCBYA9BEABoDOgfADYBoDq+o/wiYt/IAAAPY5NJNUA0CoQnQX6+uuv+acB+ADQowAUgD179vABSE9Pf6EDsGjRInoVKG0CBwQE8G+CYy+CpvdAsKfA6C1A9BIIFgA6AqQagH8trT3ZAPEPAQCgl7C5RBkQVoH4w6BffPEFH4Br167xz4JRAHbs2EEvhd60aZMQAOGFoM89AMLXgakuAVEAbGxsfnQA2BJQ9wGguj51+v8fAIDnRpw4nfgG8FvBXQWAXgjx1AAIS0B8ANgpIGEPQO2Xgj3fAPB3AKp7APQmOHoRkBCAmzdv0ksg+DOg/A4wO/3ZzeW/+EcEAPCcCVOINYAtBPF3AP/4xz8eP37MvxTo3r173dwBlJeXFxcXC3cAdAqIloB+kQHo6g6AD4BwBEg1AMKHLv6xAAD0CGEWqQaA3wdWDYBwB8D2AH7BAeCPgfZAAMQ/EACAHsSPo+4DQI8CdBOA5ubmxsbGrgLAHwN9QQNAXwcmBIB9GQALQGtr648OAP9xIwAA0Ov4ifTjAnD+/PnW1lYhAMImMAXAy8vrhQ5AUFAQvwmsGoBjx449YwC6OgOK6Q8ALw4hAPxBIHYS9FkCcOzYscbGxr1796oGIDo6mjaBX+gAeHp6IgAAIJUeC0BQUNCLHgD6RviYmBgEAAAk8VwDQN8Lv3Llyl/AHUBgYODKlSsRAACQx/MOAH0vPAKAAADAC+d5B4DuAH4ZS0AIAABIBQFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUs87AGvWrFm5cmVgYCACgAAAwIvleQeA7gB+AQEICgoKDw+Pjo5GAABABmwiPacAJCQkREdHh4eH/wKWgBAAAJAKAvCvAHh5eQUGBoaFhXUTgObm5mcMwHfffccCwBrAf9ZoAAD0On4i0fTnA/Ddd989YwCam5sbGxv37NmjGoCYmJiwsLAXfQlIbQCKi4uFAJw6depHB0BogPhHAQDQs/jp/+MC0NbWphqA4uLiX1gAaBO4JwOABgBAL+JnUfcBePz48VdffdVVAE6dOnX06NGDBw92FYDw8PCAgABPT09nZ+cXNwABAQHdBODgwYNCAG7evHn//v0fFAA0AABeBMIgUg3A999/300Abt68yQegubn5lxoAGxsbFgB+E3jTpk3FxcVlZWVdBYDdAXz66adffPHFV1999fjx42+++ebbb7/97rvvvv/+ez4AXd0EEPEPBwDg+RCnj4JdodL0Z3cA33777TfffPP48WNaAvr0008fPnyoegfAB6CsrIz2ANLS0oQA9OgS0BtvvPHmm2+yAGhoaKgNAH8H0FUA6uvr1S4B3b1796OPPuoqAP/1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";
+  var B = BedsModel;
+
+  var state = {
+    corners: START.map(function (p) { return p.slice(); }),
+    frac: 0.5,
+    show: { grid: true, zones: false, plants: true, plabels: true, buildings: true, labels: false, dbg: false },
+    autozoom: true,
+    manual: true,
+    snap: false
+  };
+
+  // Area units.  The plot/extension area cells cycle on click; CP is the default.
+  //   uu     1 = one square centimetre (UE unit: 1 u = 1 cm)
+  //   Morgen 22,500,000 uu   (game definition, ~2,250 m^2)
+  //   CP     5,290,000 uu    (Corpse Pit: 2300 x 2300 u)
+  var UU_PER_MORGEN = 22500000;
+  var UU_PER_CP = 5290000;
+  // Engine cost base: BuildingSettings DefaultExtensionLength(3500) x Width(1000).
+  var EXT_COST_BASE = 3500000;
+  var AREA_UNITS = [
+    { id: "cp", name: "CP", div: UU_PER_CP,
+      tip: "A Corpse Pit is the undisputed golden measuring tool in the game, " +
+        "a square building with sides of 2300u, or 23m and an area of 5.29M uu or about " +
+        "0.2351 Morgen.",
+      text: function (a) { return (a / UU_PER_CP).toFixed(2) + " CP"; } },
+    { id: "uu", name: "uu", div: 1,
+      tip: "Default Unreal Engine unit 'u' for length dimension equals 1 cm. " +
+        "A uu is a sqcm.",
+      text: function (a) { return Math.round(a) + " uu"; } },
+    { id: "morgen", name: "Morgen", div: UU_PER_MORGEN,
+      tip: "A Morgen has many historical definitions but in this game its " +
+        "22.5M uu exactly or about 2,250 sqm or about 24 thousand sqft.",
+      text: function (a) { return (a / UU_PER_MORGEN).toFixed(3) + " Morgen"; } }
+  ];
+  var areaUnit = 0;     // CP first
+
+  // Clicking a plot/extension area number cycles uu -> Morgen -> CP -> uu.
+  document.getElementById("status").addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.className && String(t.className).indexOf("unitpick") >= 0) {
+      areaUnit = (areaUnit + 1) % AREA_UNITS.length;
+      if (last) { updateStatus(last); }
+    }
+  });
+
+  var svg = document.getElementById("svg");
+  var view = null;      // world window, fixed while dragging
+  var W = 900, H = 868, PAD = 40;   // drawing canvas: 620 * 1.4
+  var FIXED_S = 0.22;   // autozoom off: 22 px per 100 world units
+  var M = null;     // cached view metrics; refreshed whenever the view changes
+
+  function bbox(pts) {
+    var b = { minx: 1e30, maxx: -1e30, miny: 1e30, maxy: -1e30 };
+    pts.forEach(function (p) {
+      b.minx = Math.min(b.minx, p[0]); b.maxx = Math.max(b.maxx, p[0]);
+      b.miny = Math.min(b.miny, p[1]); b.maxy = Math.max(b.maxy, p[1]);
+    });
+    return b;
+  }
+
+  // The drawing surface: autozoom keeps the 900x868 viewBox scaled to the
+  // stage; with it off the canvas grows to the content at 22 px / 100 u and the
+  // stage scrolls.
+  function layout() {
+    if (state.autozoom) { W = 900; H = 868; return; }
+    W = Math.ceil((view.maxy - view.miny) * FIXED_S + 2 * PAD);
+    H = Math.ceil((view.maxx - view.minx) * FIXED_S + 2 * PAD);
+  }
+
+  function metrics() {
+    // Display rotated 90 deg clockwise: a world vector (dx, dy) is drawn as
+    // (-dy, dx) on screen, so world Y runs across (leftwards) and world X down.
+    var w = Math.max(view.maxy - view.miny, 1e-6);   // horizontal: Y
+    var h = Math.max(view.maxx - view.minx, 1e-6);   // vertical:   X
+    var s = state.autozoom ? Math.min((W - 2 * PAD) / w, (H - 2 * PAD) / h) : FIXED_S;
+    return {
+      s: s, w: w, h: h,
+      ox: PAD,
+      oy: PAD + ((H - 2 * PAD) - h * s) / 2
+    };
+  }
+
+  function fitView() {
+    var pts = state.corners.concat([[0, 0, 0]]);
+    var b = bbox(pts);
+    var w = Math.max(b.maxx - b.minx, 600), h = Math.max(b.maxy - b.miny, 600);
+    var m = 0.12 * Math.max(w, h);
+    view = { minx: b.minx - m, maxx: b.maxx + m, miny: b.miny - m, maxy: b.maxy + m };
+    layout();
+    M = metrics();
+  }
+
+  // world -> screen, display rotated clockwise 90 deg: (x, y) -> (-y, x).
+  function sh(y) { return M.ox + (view.maxy - y) * M.s; }   // screen x of a world Y
+  function sv(x) { return M.oy + (x - view.minx) * M.s; }   // screen y of a world X
+  function sx(p) { return sh(p[1]); }
+  function sy(p) { return sv(p[0]); }
+  function toWorld(px, py) {
+    return [
+      (py - M.oy) / M.s + view.minx,
+      view.maxy - (px - M.ox) / M.s
+    ];
+  }
+
+  function poly(pts, attrs) {
+    if (!pts || pts.length < 2) { return ""; }
+    var d = pts.map(function (p) { return sx(p).toFixed(1) + "," + sy(p).toFixed(1); }).join(" ");
+    var a = "";
+    for (var k in attrs) { if (attrs[k] !== null && attrs[k] !== undefined) { a += " " + k + '="' + attrs[k] + '"'; } }
+    return "<polygon points=\"" + d + "\"" + a + "/>";
+  }
+  function text(p, s, colour, dx, dy, size) {
+    return "<text x=\"" + (sx(p) + dx).toFixed(1) + "\" y=\"" + (sy(p) + dy).toFixed(1) +
+      "\" class=\"hlabel\" fill=\"" + colour + "\" font-size=\"" + (size || 11.5) + "\">" + s + "</text>";
+  }
+
+  // The A/B preview components are a 100x100 /Engine/BasicShapes/Plane scaled
+  // 7x12 (A: 700x1200) and 4x8 (B: 400x800), sampling bluredFrame with plain
+  // UV0 (full-bleed).  There is no separate frame transform: the shaded
+  // rectangle is the texture's alpha interior, inset by its soft border.
+  // This returns an SVG luminance mask that stretches the texture over the
+  // exact screen quad, so the drawn house is the visible frame, not the canvas.
+  function frameMask(id, p, dir, halfAlong, halfAcross) {
+    // Display rotated 90 deg clockwise: world (dx, dy) is drawn as (-dy, dx),
+    // so both the along and the across direction need converting.
+    var ax = -dir[1], ay = dir[0];
+    var nx = -dir[0], ny = -dir[1];
+    var a = halfAlong * M.s, c = halfAcross * M.s;
+    var ox = sx(p) - ax * a - nx * c;
+    var oy = sy(p) - ay * a - ny * c;
+    var m = "matrix(" + (2 * a * ax).toFixed(3) + " " + (2 * a * ay).toFixed(3) + " " +
+            (2 * c * nx).toFixed(3) + " " + (2 * c * ny).toFixed(3) + " " +
+            ox.toFixed(2) + " " + oy.toFixed(2) + ")";
+    return "<mask id=\"" + id + "\" maskUnits=\"userSpaceOnUse\" x=\"0\" y=\"0\" width=\"" +
+      W + "\" height=\"" + H + "\" style=\"mask-type:luminance\">" +
+      "<image href=\"data:image/png;base64," + FRAME_B64 + "\" x=\"0\" y=\"0\" " +
+      "width=\"1\" height=\"1\" preserveAspectRatio=\"none\" transform=\"" + m + "\"/></mask>";
+  }
+
+  function gridLayer() {
+    var out = [];
+    // The grid block is the view window on screen.  Ticking has to start at the
+    // first step INSIDE it: floor() emits one line past minx/maxy, which is
+    // drawn where the opposite grid lines do not reach, so it reads as a
+    // detached line floating outside the grid.
+    //
+    // The display is rotated 90 deg clockwise: X is the VERTICAL axis (ticks are
+    // horizontal lines, numbers down the left edge) and Y the horizontal one
+    // (ticks are vertical lines, numbers under the bottom edge).
+    var bx0 = sh(view.maxy), bx1 = sh(view.miny);
+    var by0 = sv(view.minx), by1 = sv(view.maxx);
+    var x0 = Math.ceil(view.minx / STEP) * STEP;
+    var y0 = Math.ceil(view.miny / STEP) * STEP;
+    var majorStep = Math.abs(STEP * 2);
+    var clamp = function (v, lo, hi) { return Math.min(hi, Math.max(lo, v)); };
+    // Keep tick text from colliding when the view is zoomed far out: number
+    // every 1, 2, 4 ... major lines so the labels stay >= ~36 px apart.
+    var labStride = 1;
+    while (majorStep * M.s * labStride < 36) { labStride *= 2; }
+    var numbered = function (v) {
+      return Math.abs(Math.round(v / majorStep) % labStride) < 1e-9;
+    };
+    for (var x = x0; x <= view.maxx; x += STEP) {
+      var isAxis = Math.abs(x) < 1e-9;
+      var major = Math.abs(Math.round(x) % majorStep) < 1e-9;
+      out.push("<line x1=\"" + bx0.toFixed(1) + "\" y1=\"" + sv(x).toFixed(1) +
+        "\" x2=\"" + bx1.toFixed(1) + "\" y2=\"" + sv(x).toFixed(1) +
+        "\" stroke=\"" + (isAxis ? "var(--axis)" : major ? "var(--grid10)" : "var(--grid)") +
+        "\" stroke-width=\"" + (isAxis ? 1.6 : 1) + "\"/>");
+      // Tick labels belong to the grid block, not to the SVG canvas: pinned to
+      // the canvas edge they sit a long way from the lines they number.
+      if (major && numbered(x)) {
+        out.push("<text class=\"glabel\" text-anchor=\"end\" x=\"" + (bx0 - 5).toFixed(1) +
+          "\" y=\"" + clamp(sv(x) + 3.5, 10, H - 3).toFixed(1) + "\">" +
+          Math.round(x) + "</text>");
+      }
+    }
+    for (var y = y0; y <= view.maxy; y += STEP) {
+      var isAxisY = Math.abs(y) < 1e-9;
+      var majorY = Math.abs(Math.round(y) % majorStep) < 1e-9;
+      out.push("<line x1=\"" + sh(y).toFixed(1) + "\" y1=\"" + by0.toFixed(1) +
+        "\" x2=\"" + sh(y).toFixed(1) + "\" y2=\"" + by1.toFixed(1) +
+        "\" stroke=\"" + (isAxisY ? "var(--axis)" : majorY ? "var(--grid10)" : "var(--grid)") +
+        "\" stroke-width=\"" + (isAxisY ? 1.6 : 1) + "\"/>");
+      if (majorY && numbered(y)) {
+        out.push("<text class=\"glabel\" text-anchor=\"middle\" x=\"" +
+          clamp(sh(y), 18, W - 18).toFixed(1) + "\" y=\"" +
+          clamp(by1 + 14, 12, H - 4).toFixed(1) + "\">" + Math.round(y) + "</text>");
+      }
+    }
+    // North = the most negative visible Y, i.e. the right-hand end of the Y
+    // axis (the line x = 0, which runs across the screen).
+    var ny = clamp(sv(0), by0 + 8, by1 - 8);
+    if (bx1 > 26) {
+      out.push("<path d=\"M " + (bx1 - 1).toFixed(1) + " " + ny.toFixed(1) +
+        " L " + (bx1 - 13).toFixed(1) + " " + (ny - 6).toFixed(1) +
+        " L " + (bx1 - 13).toFixed(1) + " " + (ny + 6).toFixed(1) +
+        " Z\" fill=\"var(--axis)\"/>");
+      out.push("<text class=\"glabel\" text-anchor=\"end\" x=\"" + (bx1 - 16).toFixed(1) +
+        "\" y=\"" + (ny - 9).toFixed(1) + "\" style=\"fill:#334155;font-weight:600\">North</text>");
+    }
+    // East = the most positive visible X, i.e. the bottom end of the X axis
+    // (the line y = 0, which runs down the screen).
+    var ex = clamp(sh(0), bx0 + 8, bx1 - 8);
+    if (by1 > 26) {
+      out.push("<path d=\"M " + ex.toFixed(1) + " " + (by1 - 1).toFixed(1) +
+        " L " + (ex - 6).toFixed(1) + " " + (by1 - 13).toFixed(1) +
+        " L " + (ex + 6).toFixed(1) + " " + (by1 - 13).toFixed(1) +
+        " Z\" fill=\"var(--axis)\"/>");
+      out.push("<text class=\"glabel\" text-anchor=\"start\" x=\"" +
+        clamp(ex + 10, 4, W - 34).toFixed(1) + "\" y=\"" + (by1 - 3).toFixed(1) +
+        "\" style=\"fill:#334155;font-weight:600\">East</text>");
+    }
+    return out.join("");
+  }
+
+  function handle(p, i) {
+    var cx = sx(p).toFixed(1), cy = sy(p).toFixed(1);
+    var locked = i === 0;
+    var ring = locked
+      ? "<rect x=\"" + (sx(p) - 5.5).toFixed(1) + "\" y=\"" + (sy(p) - 5.5).toFixed(1) +
+        "\" width=\"11\" height=\"11\" fill=\"#fff\" stroke=\"var(--plot)\" stroke-width=\"2.2\"/>"
+      : "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"7\" fill=\"#fff\" stroke=\"var(--plot)\" stroke-width=\"2.2\"/>";
+    return "<g class=\"handle" + (locked ? " locked" : "") + "\" data-i=\"" + i + "\">" +
+      "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"18\" fill=\"transparent\"/>" + ring + "</g>";
+  }
+
+  function cornerLabel(p, i) {
+    return text(p, "P" + i + (i === 0 ? " (fixed)" : ""), "#334155", 10, -10, 12.5);
+  }
+
+  // Centred label inside a polygon (house / shed decals).
+  function labelAt(pts, s, colour, size) {
+    var cx = 0, cy = 0;
+    for (var i = 0; i < pts.length; i++) { cx += pts[i][0]; cy += pts[i][1]; }
+    cx /= pts.length; cy /= pts.length;
+    return "<text x=\"" + sx([cx, cy]).toFixed(1) + "\" y=\"" + sy([cx, cy]).toFixed(1) +
+      "\" text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"hlabel\" fill=\"" +
+      colour + "\" font-size=\"" + (size || 13) + "\" font-weight=\"600\">" + s + "</text>";
+  }
+
+  var last = null;
+  var syncPreset = null;   // set by the Plot Control block; called on every render
+
+  function compute() {
+    var corners = state.corners;
+    var wind = B.winding(corners);
+    var geomOk = B.isSimpleQuad(corners);
+    if (wind >= 0) {
+      return {
+        corners: corners, wind: wind, geomOk: geomOk, border: null,
+        preview: null, aDecal: null, aDecalTrace: {},
+        fit: { ok: false, reason: "corner order is reversed", trace: { rejected: [] } },
+        houses: { primaryShape: null, secondaryShape: null }, beds: null,
+        shed: null
+      };
+    }
+    if (!geomOk) {
+      return {
+        corners: corners, wind: wind, geomOk: false, border: null,
+        preview: null, aDecal: null, aDecalTrace: {},
+        fit: { ok: false, reason: "plot is self-intersecting",
+               trace: { rejected: [] } },
+        houses: { primaryShape: null, secondaryShape: null }, beds: null,
+        shed: null
+      };
+    }
+    var closed = corners.concat([corners[0]]);
+    var border = B.engineBorder(closed);
+    var houses = B.fitHouses(corners, border);
+    // The extracted-plot preview fit: this is what places the A decal and is the
+    // source of the extension facade.  It is independent of the post-commit A-part
+    // fit, so keep it separate from the backyard gate below.
+    var preview = B.buildExtensionForPlot(corners, border);
+    // The A decal is placed by the preview builder's own A fit (whole border,
+    // start 700, 350x600, strict endpoint test), which can differ from the
+    // extension facade fit (P3->P0 obstacle).  The same transform is the A box
+    // that the preview B fit must clear.
+    var aDecalTrace = {};
+    var aDecal = B.previewA(corners, border, { trace: aDecalTrace });
+    // The B decal is placed by the PREVIEW builder, FUN_144b43280 (called from
+    // FUN_144b59950), not by constructResidential's B fit.  It walks P3->P0
+    // from len-800, half 200x300, step -50, 12 iterations, and tests against
+    // the whole border plus the A-preview box (700x1200 around the A
+    // transform).  This is what makes B disappear when A blocks it, and it
+    // reproduces the live 2026-11-08 B decal exactly (arc 1875.3315).
+    var secTrace = {};
+    var secondary = null;
+    if (aDecal) {
+      secondary = B.previewSecondary(corners, border, aDecal.origin,
+                                     aDecal.dir, secTrace);
+    } else {
+      // The A fit found no station inside its 20 x 25 sweep, so the preview
+      // element is not emitted at all: no A decal AND no B decal.  A secondary
+      // building without its primary does not exist in the game, and the B
+      // fit's obstacle is the A box -- there is no meaningful box to test
+      // against when A was dropped.
+      secTrace.reason = "A dropped \u2014 no preview element, so no B either";
+      secTrace.aDropped = true;
+    }
+    // BPartWontFit is pushed AT COMMIT from the PREVIEW B, not from the
+    // constructed fit: FUN_144b35700 copies the preview A/B into master+0xA60/
+    // +0xAC0, then tests the preview B translation (pawn+0xfb0 element +0xA0)
+    // with x^2 + y^2 < 1.0 and appends the FName to master+0x1E0.  Live
+    // 2026-11-08: a B-present commit left the array 0/0, a B-absent commit
+    // produced count 1.
+    var bPartWontFit = secondary === null;
+    // Once that tag is set, constructResidential's own B fit never runs: its
+    // whole block is inside `if (local_21b2 != 0)` where
+    // local_21b2 = !hasTag("BPartWontFit"), so the built B stays zero and the
+    // decal spawner never draws one.  With the tag absent the stored B is the
+    // preview B (non-zero), so that fit is reused and not re-run either.
+    // Net: on a committed plot the constructed B fit is unreachable.
+    var aFullFacade = false;
+    if (bPartWontFit && houses.stepped) {
+      houses = B.fitHouses(corners, border, { fullFacade: true });
+      aFullFacade = true;
+    }
+    var fit = preview;
+    // Engine rule: constructResidential writes backFacade only after the A-part
+    // fit; FUN_144d54c70 needs that backFacade to make the extension.  No house
+    // fit -> no backFacade -> no extension and no backyard beds.
+    if (!aDecal) {
+      // No A decal means no preview element was merged, so there is no
+      // backFacade to copy either: the extension cannot exist.
+      fit = { ok: false, reason: "A dropped \u2014 no preview element, so no backFacade",
+              trace: (fit && fit.trace) || null };
+    } else if (fit && fit.ok && !houses.houseShape) {
+      fit = { ok: false, reason: "no house fit - no backyard", trace: fit.trace };
+    }
+    var beds = null, plants = null, plantsAt = null, shed = null;
+    if (fit.ok) {
+      beds = B.buildBeds(fit.quad, state.frac, fit.profile);
+      // No bed records -> the engine still rasterises the extension polygon
+      // (live 2026-11-09: 0 beds, 188 plants, exact).  So plants do not
+      // require beds.
+      plants = B.plantGrid((beds && beds.ok) ? beds : {}, fit.quad, fit.profile);
+      // The vegetable-garden shed mesh: placed from the extension's C1->P2 side,
+      // not from the cut-6 "shed" polygon.
+      shed = B.shedMesh(fit.profile, fit.quad);
+      if (beds && beds.ok) {
+        plantsAt = [0.0, 1.0].map(function (f) {
+          var b = B.buildBeds(fit.quad, f, fit.profile);
+          if (!b || !b.ok) { return null; }
+          var pg = B.plantGrid(b, fit.quad, fit.profile);
+          return pg ? pg.count : null;
+        });
+      }
+    }
+    return { corners: corners, wind: wind, geomOk: true, border: border,
+             preview: preview, fit: fit, aDecal: aDecal, aDecalTrace: aDecalTrace,
+             houses: houses, secondary: secondary, secTrace: secTrace,
+             bPartWontFit: bPartWontFit, aFullFacade: aFullFacade,
+             beds: beds, plants: plants, plantsAt: plantsAt, shed: shed };
+  }
+
+  function render() {
+    var r = compute();
+    last = r;
+    if (syncPreset) { syncPreset(); }
+    var out = [];
+
+    if (state.show.grid) { out.push(gridLayer()); }
+
+    out.push(poly(r.corners.concat([r.corners[0]]),
+      { fill: "none", stroke: "var(--plot)", "stroke-width": 2.2 }));
+
+    if (state.show.buildings) {
+      // Pre-commit preview decal: the engine's A house is a 100x100 Plane
+      // scaled 7x12 -> 700x1200 (FUN_144b769f0), sampling bluredFrame with
+      // plain UV0 (full-bleed).  The polygon is the decal plane; the mask is
+      // the texture's alpha, so what is drawn is the visible shaded frame.
+      // The decal follows the preview A fit (`previewA`, whole border), not the
+      // post-commit A-part clearance fit and not the extension facade fit.
+      var aO = null, aD = null;
+      if (r.aDecal) { aO = r.aDecal.origin; aD = r.aDecal.dir; }
+      if (aO) {
+        var aPrev = B.rectOutline(aO, aD, 600, 350);
+        out.push("<defs>" + frameMask("frameA", aO, aD, 600, 350) + "</defs>");
+        out.push(poly(aPrev,
+          { fill: "var(--house)", "fill-opacity": 0.42, stroke: "none",
+            mask: "url(#frameA)" }));
+        if (state.show.labels) { out.push(labelAt(aPrev, "A", "#5b7290", 14)); }
+      }
+    }
+
+    if (state.show.buildings && r.secondary) {
+      // B preview decal: the same bluredFrame, full-bleed, on a 4x8 plane
+      // (400x800).  The fit c0 is the clearance-box origin; the caller's
+      // pivot correction is not modelled yet.
+      // The B decal sits at the spawn origin (fit c0 + half-mesh shift), not the
+      // raw clearance-box centre.  With pivot 0 these coincide.
+      var bO = r.secondary.origin, bD = r.secondary.dir;
+      var bPrev = B.rectOutline(bO, bD, 400, 200);
+      out.push("<defs>" + frameMask("frameB", bO, bD, 400, 200) + "</defs>");
+      out.push(poly(bPrev,
+        { fill: "var(--house)", "fill-opacity": 0.42, stroke: "none",
+          mask: "url(#frameB)" }));
+      out.push(poly([[r.secondary.origin[0] - 2, r.secondary.origin[1] - 2],
+                     [r.secondary.origin[0] + 2, r.secondary.origin[1] - 2],
+                     [r.secondary.origin[0] + 2, r.secondary.origin[1] + 2],
+                     [r.secondary.origin[0] - 2, r.secondary.origin[1] + 2]],
+        { fill: "var(--house)", stroke: "none" }));
+      if (state.show.labels) { out.push(labelAt(bPrev, "B", "#5b7290", 13)); }
+    }
+
+    if (r.beds && r.beds.ok && state.show.zones) {
+      ["bed1", "bed2", "bed3"].forEach(function (k, i) {
+        var cols = ["var(--b1)", "var(--b2)", "var(--b3)"];
+        var fills = ["#fee2e2", "#dcfce7", "#dbeafe"];
+        out.push(poly(r.beds[k], { fill: fills[i], "fill-opacity": 0.85,
+          stroke: cols[i], "stroke-width": 2 }));
+        var p = r.beds[k];
+        if (p && p.length > 2) {
+          var c = [(p[0][0] + p[1][0] + p[2][0]) / 3, (p[0][1] + p[1][1] + p[2][1]) / 3];
+          out.push(text(c, String(i + 1), cols[i], -3, 4, 12));
+        }
+      });
+    }
+    if (r.beds && r.beds.ok && r.beds.shed && state.show.zones) {
+      out.push(poly(r.beds.shed, { fill: "#fef9c3", stroke: "var(--shed)",
+        "stroke-width": 1.6, "stroke-dasharray": "4 3" }));
+      out.push(text(r.beds.shed[0], "shed area", "#a16207", 5, 13, 10.5));
+    }
+    // The extension cutter frame, shared by the plant label cells and the shed spot:
+    // e1 = (uy,-ux), e2 = (ux,uy) from P1->P2, so both share the extension's rotation.
+    var cellFrame = function () {
+      var u = B.unit2(r.fit.quad[2][0] - r.fit.quad[1][0],
+                      r.fit.quad[2][1] - r.fit.quad[1][1]);
+      // Text follows the square: screen direction of e2 is (-e2y, e2x).
+      var rot = Math.atan2(u[0], -u[1]) * 180 / Math.PI;
+      if (rot > 90) { rot -= 180; }
+      if (rot <= -90) { rot += 180; }
+      return { e1x: u[1], e1y: -u[0], e2x: u[0], e2y: u[1], rot: rot };
+    };
+    var cellSquare = function (c, fr, hs) {
+      return [
+        [c[0] + hs * (fr.e1x + fr.e2x), c[1] + hs * (fr.e1y + fr.e2y)],
+        [c[0] + hs * (-fr.e1x + fr.e2x), c[1] + hs * (-fr.e1y + fr.e2y)],
+        [c[0] + hs * (-fr.e1x - fr.e2x), c[1] + hs * (-fr.e1y - fr.e2y)],
+        [c[0] + hs * (fr.e1x - fr.e2x), c[1] + hs * (fr.e1y - fr.e2y)]
+      ];
+    };
+
+    if (r.shed && state.show.buildings) {
+      // The shed reads as one plant spot: the same 100-unit cell square at the
+      // shed-mesh centre, with the letter S instead of a spot number.
+      var sfr = cellFrame();
+      var sCell = cellSquare(r.shed.origin, sfr, 50.0);
+      out.push(poly(sCell.concat([sCell[0]]),
+        { fill: "none", stroke: "var(--plant)", "stroke-opacity": ".3",
+          "stroke-width": 0.8 }));
+      var stx = sx(r.shed.origin).toFixed(1), sty = sy(r.shed.origin).toFixed(1);
+      out.push("<text x=\"" + stx + "\" y=\"" + sty + "\" transform=\"rotate(" +
+        sfr.rot.toFixed(2) + " " + stx + " " + sty + ")\"" +
+        " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"plabel\">S</text>");
+    }
+
+    if (r.plants && r.plants.count && state.show.plants) {
+      var dots = [];
+      if (state.show.plabels) {
+        // Labels on: a 100-unit cell square per spot, in the extension cutter's
+        // frame (e1 = (uy,-ux), e2 = (ux,uy) from P1->P2), plus the 1-based
+        // spot number (index + 1), the same numbering the Coordinates card uses.
+        var rotDeg = 0;
+        if (r.fit.ok) {
+          var fr = cellFrame();
+          rotDeg = fr.rot;
+          var d = [];
+          for (var ci = 0; ci < r.plants.points.length; ci++) {
+            var q0 = r.plants.points[ci];
+            var qc = cellSquare(q0, fr, 50.0);
+            d.push("M" + sx(qc[0]).toFixed(1) + " " + sy(qc[0]).toFixed(1) +
+                   "L" + sx(qc[1]).toFixed(1) + " " + sy(qc[1]).toFixed(1) +
+                   "L" + sx(qc[2]).toFixed(1) + " " + sy(qc[2]).toFixed(1) +
+                   "L" + sx(qc[3]).toFixed(1) + " " + sy(qc[3]).toFixed(1) + "Z");
+          }
+          out.push("<path d=\"" + d.join("") + "\" fill=\"none\" stroke=\"var(--plant)\"" +
+            " stroke-opacity=\".3\" stroke-width=\"0.8\"/>");
+        }
+        for (var pi = 0; pi < r.plants.points.length; pi++) {
+          var pp = r.plants.points[pi];
+          var tx = sx(pp).toFixed(1), ty = sy(pp).toFixed(1);
+          dots.push("<text x=\"" + tx + "\" y=\"" + ty + "\" transform=\"rotate(" +
+            rotDeg.toFixed(2) + " " + tx + " " + ty + ")\"" +
+            " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"plabel\">" +
+            (pi + 1) + "</text>");
+        }
+      } else {
+        for (var pj = 0; pj < r.plants.points.length; pj++) {
+          var pq = r.plants.points[pj];
+          dots.push("<circle cx=\"" + sx(pq).toFixed(1) + "\" cy=\"" + sy(pq).toFixed(1) +
+            "\" r=\"1.7\" fill=\"var(--plant)\" fill-opacity=\".65\"/>");
+        }
+      }
+      out.push("<g>" + dots.join("") + "</g>");
+    }
+
+    if (r.fit.ok && state.show.labels) {
+      // The engine's extension polygon is `profile` (outPolyB / SmoothBorder), not the
+      // 4-point corner list: an AB+BC corner cut keeps the rest of the plot and the
+      // polygon runs ...P3 -> P0 -> H1.  Straight-side resample points are collinear,
+      // so for a normal cut this draws the same quad as before.
+      var ring = (r.fit.profile && r.fit.profile.length > 3) ? r.fit.profile : r.fit.quad;
+      out.push(poly(ring.concat([ring[0]]),
+        { fill: "none", stroke: "var(--quad)", "stroke-width": 2.6 }));
+      out.push("<line x1=\"" + sx(r.fit.quad[0]).toFixed(1) + "\" y1=\"" + sy(r.fit.quad[0]).toFixed(1) +
+        "\" x2=\"" + sx(r.fit.quad[1]).toFixed(1) + "\" y2=\"" + sy(r.fit.quad[1]).toFixed(1) +
+        "\" stroke=\"var(--quad)\" stroke-width=\"6\" stroke-opacity=\".18\"/>");
+      var placed = [];
+      ["C0", "C1", "C2", "C3"].forEach(function (lab, i) {
+        var p = r.fit.quad[i];
+        if (!p) { return; }
+        for (var j = 0; j < placed.length; j++) {
+          if (Math.hypot(p[0] - placed[j][0], p[1] - placed[j][1]) < 0.5) { return; }
+        }
+        placed.push(p);
+        out.push(text(p, lab, "var(--quad)", 5, i < 2 ? -8 : 15, 12));
+      });
+    }
+
+    if (state.show.dbg && r.fit.ok) {
+      var tr = r.fit.trace;
+      if (tr.origin && tr.dir) {
+        out.push("<circle cx=\"" + sx(tr.origin).toFixed(1) + "\" cy=\"" +
+          sy(tr.origin).toFixed(1) + "\" r=\"3\" fill=\"var(--dbg)\"/>");
+      }
+      if (tr.Q) {
+        out.push("<circle cx=\"" + sx(tr.Q).toFixed(1) + "\" cy=\"" + sy(tr.Q).toFixed(1) +
+          "\" r=\"4\" fill=\"var(--dbg)\"/>" + text(tr.Q, "Q", "var(--dbg)", 6, -6, 11));
+      }
+      if (tr.A0) {
+        out.push("<circle cx=\"" + sx(tr.A0).toFixed(1) + "\" cy=\"" + sy(tr.A0).toFixed(1) +
+          "\" r=\"4\" fill=\"none\" stroke=\"var(--dbg)\" stroke-width=\"2\"/>" +
+          text(tr.A0, "A0", "var(--dbg)", 6, 13, 11));
+      }
+    }
+
+    for (var i = 0; i < 4; i++) {
+      // Manual mode owns the handles; with it off the corners are set by the
+      // Plot Control sliders, so no grab targets are drawn at all.
+      if (state.manual) { out.push(handle(r.corners[i], i)); }
+      if (state.show.labels) { out.push(cornerLabel(r.corners[i], i)); }
+    }
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    if (state.autozoom) {
+      svg.style.width = "100%"; svg.style.height = "100%"; svg.style.flex = "1 1 auto";
+    } else {
+      svg.style.width = W + "px"; svg.style.height = H + "px"; svg.style.flex = "0 0 auto";
+    }
+    svg.innerHTML = out.join("");
+    updateStatus(r);
+  }
+
+  function fmt(v, n) { return v.toFixed(n === undefined ? 0 : n); }
+  // Player-facing explanation for a missing backyard extension.  The model's
+  // reasons ("back facade", "border crossings", "fitter", "box") mean nothing
+  // to someone using the page, so map them onto Plot Control terms.
+  function extFailKind(reason) {
+    var r = String(reason || "");
+    if (/border crossing/i.test(r)) { return "tooLong"; }
+    if (/A dropped|no house fit|A fit|no candidate|side extraction/i.test(r)) { return "noRoom"; }
+    if (/degenerate/i.test(r)) { return "collapsed"; }
+    if (/cut|slice|abort/i.test(r)) { return "noDivide"; }
+    return "other";
+  }
+  function extFailShort(reason) {
+    switch (extFailKind(reason)) {
+      case "tooLong": return "Frontage too long for the cut line";
+      case "noRoom": return "no room for house + backyard";
+      case "collapsed": return "a side has collapsed";
+      case "noDivide": return "shape does not divide cleanly";
+      default: return "could not be fitted";
+    }
+  }
+  function extFailText(reason) {
+    switch (extFailKind(reason)) {
+      case "tooLong":
+        return "the plot is too wide for the game's backyard cut \u2014 the facade line only " +
+          "reaches 10,000 u (100 m) out from the house. Shorten the Frontage, or move a " +
+          "corner in.";
+      case "noRoom":
+        return "there is not enough room for a house and a backyard at this shape. " +
+          "Widen the Frontage, lengthen the Length, or move a corner.";
+      case "collapsed":
+        return "one of the sides has collapsed. Give every side some length with the " +
+          "Frontage and Length sliders, or pick a preset.";
+      case "noDivide":
+        return "the backyard does not divide cleanly at this shape. Nudge a corner, or try a preset.";
+      default:
+        return "the backyard could not be fitted at this shape. Adjust Frontage or Length, " +
+          "or move a corner.";
+    }
+  }
+  function kv(k, v) {
+    return "<div class=\"kv\"><span>" + k + "</span><span>" + v + "</span></div>";
+  }
+
+  function updateStatus(r) {
+    var el = document.getElementById("status");
+    var banner = document.getElementById("banner");
+    var rows = [];
+    var cls = "";
+    var sec = function (t) { return "<div class=\"sec\">" + t + "</div>"; };
+    var setLayer = function (id, on, txt) {
+      var e = document.getElementById(id);
+      if (!e) { return; }
+      e.className = "ly-state " + (on ? "on" : "off");
+      e.textContent = txt;
+    };
+    (function () {
+      ["st-zones", "st-buildings"].forEach(function (id) {
+        var e = document.getElementById(id);
+        if (e) { e.className = "ly-state"; e.textContent = "\u2014"; }
+      });
+    })();
+
+    // Areas are needed by the Plants section (density) as well as by Plot.
+    var shoelace = function (pts) {
+      if (!pts || pts.length < 3) { return null; }
+      var a = 0;
+      for (var si = 0; si < pts.length; si++) {
+        var sq = pts[(si + 1) % pts.length];
+        a += pts[si][0] * sq[1] - sq[0] * pts[si][1];
+      }
+      return Math.abs(a) / 2;
+    };
+    var plotArea = shoelace(r.corners);
+    // Extension area = the engine polygon (SmoothBorder / outPolyB), not the 4 corners.
+    // They coincide on a normal cut (resample points are collinear) but an AB+BC corner
+    // cut keeps P0, which the 4-point list omits.  Plant density uses this, not the plot.
+    var extArea = (r.fit && r.fit.ok)
+      ? shoelace((r.fit.profile && r.fit.profile.length > 3) ? r.fit.profile : r.fit.quad)
+      : null;
+
+    if (r.plants) {
+      rows.push(sec("Plants"));
+      rows.push(kv("N plants", r.plants.count));
+      // Plant Density = N / extension area, in the same unit the area cells use.
+      if (r.plants && extArea !== null) {
+        var du = AREA_UNITS[areaUnit];
+        var dv = r.plants.count / (extArea / du.div);
+        var dtxt = (du.id === "uu") ? dv.toExponential(2) : dv.toFixed(2);
+        var dtip = "Plant Density is N plants divided by the extension area, expressed per " +
+                   "the selected area unit. The unit follows the plot area and extension " +
+                   "area selector (" + du.name + ").";
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + dtip + "\">Plant Density</span>" +
+                  "<span title=\"" + dtip + "\">" + dtxt + " /" + du.name + "</span></div>");
+      }
+      if (r.plantsAt && r.plantsAt[0] !== null && r.plantsAt[1] !== null) {
+        var nlo = r.plantsAt[0], nhi = r.plantsAt[1], nn = r.plants.count;
+        var pct = function (v) {
+          var q = Math.round((v - nn) / nn * 100);
+          return (q > 0 ? "+" : "") + q;
+        };
+        var tip = "Pseudorandom range for N plants depending on position of plot on world " +
+                  "map (x,y) (" + pct(nlo) + "%," + pct(nhi) + "%).";
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + tip + "\">N Range</span>" +
+                  "<span title=\"" + tip + "\">" + nlo + " to " + nhi + "</span></div>");
+      }
+      if (r.plants.count && r.shed && r.shed.box && r.shed.box.length) {
+        var scx = 0, scy = 0, bi;
+        for (bi = 0; bi < r.shed.box.length; bi++) {
+          scx += r.shed.box[bi][0]; scy += r.shed.box[bi][1];
+        }
+        scx /= r.shed.box.length; scy /= r.shed.box.length;
+        var dsum = 0;
+        for (bi = 0; bi < r.plants.points.length; bi++) {
+          dsum += Math.hypot(r.plants.points[bi][0] - scx, r.plants.points[bi][1] - scy);
+        }
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"Average plant distance to the " +
+          "shed.\">Avg distance</span><span>" + fmt(dsum / r.plants.points.length, 0) + "</span></div>");
+      }
+      if (r.plants.fallbackExtension) {
+        rows.push(kv("plant surface", "the extension polygon itself (0 bed records, no inset)"));
+      }
+    }
+
+    rows.push(sec("Plot"));
+
+    // extArea was computed above (the Plants density uses it).
+
+    var areaCell = function (a) {
+      if (a === null || a === undefined) { return "\u2014"; }
+      var u = AREA_UNITS[areaUnit];
+      return "<span class=\"unitpick\" title=\"" + u.tip + "\">" + u.text(a) + "</span>";
+    };
+    // GetExtensionAreaCostMultiplier / GetRegionalWealthCostForUpgrade:
+    // max(1.0, floor(area / 3,500,000 * 10 + 0.5) / 10).
+    var extCost = function (a) {
+      if (a === null || a === undefined) { return null; }
+      return Math.max(1.0, Math.floor(a / EXT_COST_BASE * 10 + 0.5) / 10);
+    };
+    var extMod = extCost(extArea);
+    rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" +
+      "Regional wealth cost of the upgrade is multiplied by this: +10% per 350,000 uu of " +
+      "extension area above 3,675,000 uu (base 3,500,000 uu = DefaultExtensionLength 3500 " +
+      "x DefaultExtensionWidth 1000). Clamped at 1.0, so smaller extensions get no " +
+      "discount.\">Ext Cost Modifier</span><span>" +
+      (extMod === null ? "\u2014" : "+" + Math.round((extMod - 1) * 100) + "%") + "</span></div>");
+    rows.push(kv("plot area", areaCell(plotArea)));
+    rows.push(kv("extension area", areaCell(extArea)));
+
+    // P0..P3 always listed (debug readout)
+    for (var ci = 0; ci < 4; ci++) {
+      var cp = r.corners[ci];
+      rows.push("<div class=\"kv\"><span>P" + ci + "</span><span>" +
+        fmt(cp[0]) + ", " + fmt(cp[1]) + "</span></div>");
+    }
+    for (var ei = 0; ei < 4; ei++) {
+      var ea = r.corners[ei], eb = r.corners[(ei + 1) % 4];
+      rows.push(kv("P" + ei + "\u2192P" + ((ei + 1) % 4),
+        fmt(Math.hypot(eb[0] - ea[0], eb[1] - ea[1]))));
+    }
+
+    if (r.wind >= 0) {
+      cls = "err";
+      banner.textContent = "P0\u2013P3 are running the wrong way round. The engine only ever " +
+        "stores plots with a negative signed area \u2014 in UE5 (left-handed, map Y " +
+        "increasing downward) that reads counter-clockwise on screen. Drag a corner back " +
+        "across the plot until the order matches.";
+      banner.classList.add("on");
+      el.className = cls;
+      el.innerHTML = rows.join("");
+      return;
+    }
+
+    rows.push(sec("Primary House"));
+    rows.push(kv("fit position", r.aDecal ? fmt(r.aDecal.arc) : "none"));
+
+    rows.push(sec("Secondary House"));
+    rows.push(kv("fit position", r.secondary ? fmt(r.secondary.origin[0]) : "none"));
+
+    rows.push(sec("Extension"));
+    if (!r.fit.ok) {
+      cls = "err";
+      rows.push(kv("backyard", "none on this plot shape"));
+      rows.push(kv("why", extFailShort(r.fit.reason)));
+      if (r.geomOk === false) {
+        banner.textContent = "This plot's corners cross each other (a bow-tie shape). " +
+          "Move a corner until the outline no longer crosses itself.";
+      } else {
+        banner.textContent = "No backyard extension: " + extFailText(r.fit.reason);
+      }
+      banner.classList.add("on");
+    } else {
+      banner.classList.remove("on");
+      var P0 = r.corners[0], P1 = r.corners[1], Q0 = r.fit.quad[0], Q1 = r.fit.quad[1];
+      var fx = P1[0] - P0[0], fy = P1[1] - P0[1];
+      var fl = Math.sqrt(fx * fx + fy * fy);
+      var depth = null;
+      if (fl > 1e-9) {
+        var nx = fy / fl, ny = -fx / fl;
+        var d0 = (Q0[0] - P0[0]) * nx + (Q0[1] - P0[1]) * ny;
+        var d1 = (Q1[0] - P0[0]) * nx + (Q1[1] - P0[1]) * ny;
+        depth = Math.abs((d0 + d1) / 2);
+      }
+      rows.push(kv("cut depth", depth === null ? "\u2014" : fmt(depth)));
+      rows.push(kv("Off House", (r.fit.trace && r.fit.trace.Q)
+        ? fmt(r.fit.trace.Q[0]) + ", " + fmt(r.fit.trace.Q[1]) + " (" +
+          ((r.fit.trace.boxSource) || "A") + ")"
+        : "\u2014"));
+    }
+
+    if (r.beds) {
+      if (r.beds.ok) {
+        var area = function (p) {
+          var a = 0;
+          for (var i = 0; i < p.length; i++) {
+            var q = p[(i + 1) % p.length];
+            a += p[i][0] * q[1] - q[0] * p[i][1];
+          }
+          return Math.abs(a) / 2;
+        };
+        rows.push(sec("Beds"));
+        rows.push(kv("areas", [r.beds.bed1, r.beds.bed2, r.beds.bed3]
+          .map(function (p) { return fmt(area(p)); }).join(" / ")));
+        rows.push(kv("shed", r.beds.shed ? fmt(area(r.beds.shed)) : "none"));
+        rows.push(kv("shed mesh", r.shed
+          ? fmt(r.shed.origin[0]) + ", " + fmt(r.shed.origin[1])
+          : "none"));
+        rows.push(kv("offset", fmt(r.beds.offset[0]) + ", " + fmt(r.beds.offset[1])));
+      } else {
+        cls = "err";
+        rows.push("<div class=\"kv\"><span>beds</span><span>cut failed</span></div>");
+        rows.push("<div class=\"kv\"><span>reason</span><span>" + r.beds.error + "</span></div>");
+        if (!banner.classList.contains("on")) {
+          banner.textContent = "Beds failed: " + r.beds.error;
+          banner.classList.add("on");
+        }
+      }
+    }
+    setLayer("st-zones", !!(r.beds && r.beds.ok) || !!(r.beds && r.beds.shed),
+             (r.beds && r.beds.ok) ? "present" : "none");
+    var parts = [];
+    if (r.aDecal) { parts.push("A"); }
+    if (r.secondary) { parts.push("B"); }
+    if (r.shed) { parts.push("shed"); }
+    setLayer("st-buildings", parts.length > 0, parts.length ? parts.join(" + ") : "none");
+    el.className = cls;
+    el.innerHTML = rows.join("");
+    // 800+ spot rows are cheap to build but expensive to lay out, so the list is
+    // refreshed when the drag ends rather than on every pointer move.
+    if (drag === null) { updateCoords(r); }
+  }
+
+  // ---------------------------------------------------------- coordinates
+  function centroid(pts) {
+    var cx = 0, cy = 0;
+    for (var i = 0; i < pts.length; i++) { cx += pts[i][0]; cy += pts[i][1]; }
+    return [cx / pts.length, cy / pts.length];
+  }
+
+  function updateCoords(r) {
+    var out = [];
+    if (r.aDecal) {
+      var a = centroid(B.rectOutline(r.aDecal.origin, r.aDecal.dir, 600, 350));
+      out.push(kv("House", fmt(a[0], 1) + ", " + fmt(a[1], 1)));
+    } else {
+      out.push(kv("House", "none"));
+    }
+    if (r.shed) {
+      var s = centroid(r.shed.box);
+      out.push(kv("Shed", fmt(s[0], 1) + ", " + fmt(s[1], 1)));
+    } else {
+      out.push(kv("Shed", "none"));
+    }
+    if (r.plants && r.plants.count) {
+      for (var i = 0; i < r.plants.count; i++) {
+        var p = r.plants.points[i];
+        out.push(kv("spot" + (i + 1), fmt(p[0], 1) + ", " + fmt(p[1], 1)));
+      }
+    }
+    document.getElementById("coords").innerHTML = out.join("");
+  }
+
+  // ------------------------------------------------------------- interaction
+  var drag = null;
+
+  function svgPoint(evt) {
+    // Client -> SVG user units.  The SVG is 900x868 with
+    // preserveAspectRatio="xMidYMid meet", so the picture is letterboxed inside
+    // the element whenever its CSS aspect is not 900:620.  Mapping with
+    // rect.width/rect.height ignores that padding, which is why a grabbed
+    // handle jumped: near an edge the error is the whole letterbox bar.
+    if (svg.createSVGPoint && svg.getScreenCTM) {
+      var pt = svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      var ctm = svg.getScreenCTM();
+      if (ctm) {
+        var q = pt.matrixTransform(ctm.inverse());
+        return [q.x, q.y];
+      }
+    }
+    var rect = svg.getBoundingClientRect();
+    var s = Math.min(rect.width / W, rect.height / H);
+    return [
+      W / 2 + (evt.clientX - rect.left - rect.width / 2) / s,
+      H / 2 + (evt.clientY - rect.top - rect.height / 2) / s
+    ];
+  }
+
+  var dragOffset = null;   // corner minus pointer, so the grab does not snap
+
+  svg.addEventListener("pointerdown", function (evt) {
+    var g = evt.target.closest ? evt.target.closest(".handle") : null;
+    if (!g) { return; }
+    var i = parseInt(g.getAttribute("data-i"), 10);
+    if (i === 0) { return; }            // P0 is pinned to the origin
+    if (!state.manual) { return; }      // Plot Control owns the dimensions
+    drag = i;
+    var sp = svgPoint(evt);
+    var w = toWorld(sp[0], sp[1]);
+    var c0 = state.corners[i];
+    dragOffset = [c0[0] - w[0], c0[1] - w[1]];
+    g.classList.add("drag");
+    try { svg.setPointerCapture(evt.pointerId); } catch (e) { /* synthetic pointer */ }
+    evt.preventDefault();
+  });
+
+  svg.addEventListener("pointermove", function (evt) {
+    if (drag === null) { return; }
+    var sp = svgPoint(evt);
+    var w = toWorld(sp[0], sp[1]);
+    // keep the point where it was grabbed: the hit circle is 18 units wide, so
+    // clicking its edge would otherwise snap the corner onto the cursor
+    w = [w[0] + dragOffset[0], w[1] + dragOffset[1]];
+    // no drag limits: the corner follows the pointer wherever it goes
+    if (drag === 1) { w[1] = 0; }       // P1 stays on y = 0 (the street line)
+    if (state.snap) {                   // 100-unit intervals on both axes
+      w[0] = Math.round(w[0] / 100) * 100;
+      w[1] = Math.round(w[1] / 100) * 100;
+    }
+    var c = state.corners[drag];
+    state.corners[drag] = [w[0], w[1], c[2] === undefined ? 0 : c[2]];
+    render();
+    evt.preventDefault();
+  });
+
+  function endDrag(evt) {
+    if (drag === null) { return; }
+    drag = null;
+    dragOffset = null;
+    try { svg.releasePointerCapture(evt.pointerId); } catch (e) {}
+    // with the limits gone a corner can be dragged out of the window, so pull the
+    // view back to fit once the drag ends (the scale changes only on release)
+    var b = bbox(state.corners);
+    if (b.minx < view.minx || b.maxx > view.maxx || b.miny < view.miny || b.maxy > view.maxy) {
+      fitView();
+    }
+    render();   // also refreshes the Coordinates list (skipped while dragging)
+  }
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+
+  // ---------------------------------------------------------------- controls
+  function bindCheck(id, key) {
+    var el = document.getElementById(id);
+    el.addEventListener("change", function () {
+      state.show[key] = el.checked;
+      render();
+    });
+  }
+  bindCheck("ly-grid", "grid");
+  bindCheck("ly-zones", "zones");
+  bindCheck("ly-plants", "plants");
+  bindCheck("ly-plabels", "plabels");
+  bindCheck("ly-buildings", "buildings");
+  bindCheck("ly-labels", "labels");
+  bindCheck("ly-dbg", "dbg");
+
+  (function () {
+    var az = document.getElementById("autozoom");
+    az.addEventListener("change", function () {
+      state.autozoom = az.checked;
+      fitView();
+      render();
+    });
+  })();
+
+  // ------------------------------------------------------------ plot control
+  (function () {
+    var mode = document.getElementById("mode");
+    var preset = document.getElementById("preset");
+    var box = document.getElementById("dims");
+    var manopt = document.getElementById("manopt");
+    var snap = document.getElementById("snap");
+    var PRESETS = [
+      { name: "4CP Square", c: [[0, 0, 0], [4600, 0, 0], [4600, -4600, 0], [0, -4600, 0]] },
+      { name: "2CP Linear", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [0, -4600, 0]] },
+      { name: "Tacticat BFD", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] }
+    ];
+    var rw = document.getElementById("dim-w"), nw = document.getElementById("num-w");
+    var rl = document.getElementById("dim-l"), nl = document.getElementById("num-l");
+    var sq = document.getElementById("square");
+
+    // Edge Mode floors: Frontage 800 (2000 while Make Square is on), Length 2000.
+    var MIN_FRONTAGE = 800, MIN_FRONTAGE_SQ = 2000, MIN_LENGTH = 2000;
+    function edges() {
+      var c = state.corners;
+      var w = Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]);
+      var l = Math.hypot(c[3][0] - c[0][0], c[3][1] - c[0][1]);
+      var p23 = Math.hypot(c[2][0] - c[3][0], c[2][1] - c[3][1]);
+      var p12 = Math.hypot(c[2][0] - c[1][0], c[2][1] - c[1][1]);
+      // Smallest control value: the Edge Mode floor, and the paired edge must
+      // also stay at or above the 100-unit absolute minimum.
+      var wFloor = sq.checked ? MIN_FRONTAGE_SQ : MIN_FRONTAGE;
+      var wMin = Math.max(wFloor, Math.ceil((w - p23 + 100) / 100) * 100);
+      var lMin = Math.max(MIN_LENGTH, Math.ceil((l - p12 + 100) / 100) * 100);
+      return { w: w, l: l, p23: p23, p12: p12, wMin: wMin, lMin: lMin };
+    }
+    function show() {
+      var e = edges();
+      rw.min = nw.min = String(e.wMin);
+      rl.min = nl.min = String(e.lMin);
+      rw.max = nw.max = "20000";
+      rl.max = nl.max = "20000";
+      rw.value = nw.value = Math.round(e.w);
+      // "Make Square" pins Length to Frontage, so the Length readout follows the
+      // frontage and its controls are disabled.
+      rl.value = nl.value = Math.round(sq.checked ? e.w : e.l);
+      rl.disabled = nl.disabled = sq.checked;
+    }
+    function validQuad(c) {
+      // no edge of the quad may end up shorter than the 100-unit minimum
+      for (var i = 0; i < 4; i++) {
+        var a = c[i], b = c[(i + 1) % 4];
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 100 - 1e-6) { return false; }
+      }
+      return true;
+    }
+    function snapshot() {
+      return state.corners.map(function (q) { return q.slice(); });
+    }
+    // Width: |P0-P1| is set directly; |P2-P3| moves by the SAME DELTA with P3
+    // fixed (the pair keeps its difference). Blocked if that would collapse an
+    // edge, i.e. any side of the quad ends at <= 0.
+    function applyWidth(newW) {
+      var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
+      var oldW = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      var oldP23 = Math.hypot(p2[0] - p3[0], p2[1] - p3[1]);
+      var u1 = B.unit2(p1[0] - p0[0], p1[1] - p0[1]);   // P0 -> P1
+      var u2 = B.unit2(p2[0] - p3[0], p2[1] - p3[1]);   // P3 -> P2
+      if (!u1[0] && !u1[1]) { return false; }
+      if (!u2[0] && !u2[1]) { return false; }
+      var newP23 = oldP23 + (newW - oldW);
+      if (newW <= 0 || newP23 <= 0) { return false; }
+      var keep = snapshot();
+      c[1] = [p0[0] + newW * u1[0], p0[1] + newW * u1[1], p1[2]];
+      c[2] = [p3[0] + newP23 * u2[0], p3[1] + newP23 * u2[1], p2[2]];
+      if (!validQuad(c)) { state.corners = keep; return false; }
+      return true;
+    }
+    // Length: |P0-P3| is set directly; |P1-P2| moves by the same delta with P1
+    // fixed. Blocked if that would collapse an edge.
+    function applyLength(newL) {
+      var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
+      var oldL = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+      var oldP12 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      var v3 = B.unit2(p3[0] - p0[0], p3[1] - p0[1]);   // P0 -> P3
+      var v2 = B.unit2(p2[0] - p1[0], p2[1] - p1[1]);   // P1 -> P2
+      if (!v3[0] && !v3[1]) { return false; }
+      if (!v2[0] && !v2[1]) { return false; }
+      var newP12 = oldP12 + (newL - oldL);
+      if (newL <= 0 || newP12 <= 0) { return false; }
+      var keep = snapshot();
+      c[3] = [p0[0] + newL * v3[0], p0[1] + newL * v3[1], p3[2]];
+      c[2] = [p1[0] + newP12 * v2[0], p1[1] + newP12 * v2[1], p2[2]];
+      if (!validQuad(c)) { state.corners = keep; return false; }
+      return true;
+    }
+    // Make Square: the plot becomes a square whose first side is the street
+    // edge.  P3 goes to the perpendicular of P0->P1 (same side it is on now)
+    // and P2 = P3 + (P1 - P0), so all four sides are equal and right-angled.
+    // This is the checkbox's own operation; the Length slider keeps its delta
+    // rule and is disabled while the box is ticked.
+    function applySquare(side) {
+      var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
+      var u1 = B.unit2(p1[0] - p0[0], p1[1] - p0[1]);
+      if (!u1[0] && !u1[1]) { return false; }
+      var n = [-u1[1], u1[0]];                       // rot90 of the street edge
+      var cur = B.unit2(p3[0] - p0[0], p3[1] - p0[1]);
+      if (cur[0] * n[0] + cur[1] * n[1] < 0) { n = [u1[1], -u1[0]]; }
+      var keep = snapshot();
+      c[1] = [p0[0] + side * u1[0], p0[1] + side * u1[1], p1[2]];
+      c[3] = [p0[0] + side * n[0], p0[1] + side * n[1], p3[2]];
+      c[2] = [c[3][0] + (c[1][0] - p0[0]), c[3][1] + (c[1][1] - p0[1]), p2[2]];
+      if (!validQuad(c)) { state.corners = keep; return false; }
+      return true;
+    }
+    function commit(which, val) {
+      var e = edges();
+      if (which === "w") {
+        var w = Math.max(e.wMin, Math.min(20000, Math.round(val / 100) * 100));
+        var keep = snapshot();
+        if (sq.checked) {
+          if (!applySquare(w)) { state.corners = keep; }
+        } else {
+          applyWidth(w);
+        }
+      } else if (!sq.checked) {
+        var l = Math.max(e.lMin, Math.min(20000, Math.round(val / 100) * 100));
+        applyLength(l);
+      }
+      show();
+      fitView();
+      render();
+    }
+    sq.addEventListener("change", function () {
+      if (sq.checked && !applySquare(Math.max(MIN_FRONTAGE_SQ, edges().w))) { sq.checked = false; }
+      show();
+      fitView();
+      render();
+    });
+    mode.addEventListener("change", function () {
+      state.manual = mode.value === "manual";
+      box.style.display = state.manual ? "none" : "block";
+      manopt.style.display = state.manual ? "block" : "none";
+      if (!state.manual) {
+        // Edge Mode cannot represent a plot below its floors, so bring the
+        // current shape up to them on entry.
+        var e0 = edges();
+        if (e0.w < e0.wMin) { applyWidth(e0.wMin); }
+        var e1 = edges();
+        if (sq.checked) {
+          applySquare(Math.max(MIN_FRONTAGE_SQ, e1.w));
+        } else if (e1.l < e1.lMin) {
+          applyLength(e1.lMin);
+        }
+        show();
+      }
+      render();
+    });
+    preset.addEventListener("change", function () {
+      var p = PRESETS[+preset.value];
+      if (!p) { return; }                 // "Custom" is display-only
+      // A preset is an exact shape; Make Square would distort it, so it steps aside.
+      if (sq.checked) { sq.checked = false; rl.disabled = nl.disabled = false; }
+      state.corners = p.c.map(function (q) { return q.slice(); });
+      fitView();
+      if (!state.manual) { show(); }
+      render();
+    });
+    // Keep the preset name honest: any corner that no longer matches a preset
+    // switches the dropdown to Custom.
+    syncPreset = function () {
+      var c = state.corners;
+      for (var i = 0; i < PRESETS.length; i++) {
+        var p = PRESETS[i].c, ok = true;
+        for (var k = 0; k < 4 && ok; k++) {
+          if (Math.abs(c[k][0] - p[k][0]) > 1e-6 || Math.abs(c[k][1] - p[k][1]) > 1e-6) {
+            ok = false;
+          }
+        }
+        if (ok) { preset.value = String(i); return; }
+      }
+      preset.value = "-1";
+    };
+    snap.addEventListener("change", function () {
+      state.snap = snap.checked;
+      if (state.snap) {
+        // pull any corner that is off the 100-unit lattice onto it
+        for (var i = 1; i < 4; i++) {
+          var c = state.corners[i];
+          state.corners[i] = [Math.round(c[0] / 100) * 100,
+                              Math.round(c[1] / 100) * 100, c[2]];
+        }
+        fitView();
+      }
+      render();
+    });
+    rw.addEventListener("input", function () { commit("w", +rw.value); });
+    rl.addEventListener("input", function () { commit("l", +rl.value); });
+    nw.addEventListener("change", function () { commit("w", +nw.value || 0); });
+    nl.addEventListener("change", function () { commit("l", +nl.value || 0); });
+  })();
+
+  document.getElementById("fit").addEventListener("click", function () {
+    fitView();
+    render();
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    state.corners = START.map(function (p) { return p.slice(); });
+    fitView();
+    render();
+  });
+
+  // copy the Model readout
+  var copyBtn = document.getElementById("copy-model");
+  function copyDone() {
+    copyBtn.classList.add("done");
+    copyBtn.title = "Copied";
+    setTimeout(function () {
+      copyBtn.classList.remove("done");
+      copyBtn.title = "Copy model parameters";
+    }, 1200);
+  }
+  function copyFallback(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); copyDone(); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
+  }
+  copyBtn.addEventListener("click", function () {
+    var text = document.getElementById("status").innerText;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(copyDone, function () { copyFallback(text); });
+    } else {
+      copyFallback(text);
+    }
+  });
+
+  window.addEventListener("resize", function () { M = metrics(); render(); });
+
+  fitView();
+  render();
+  window.__state = state;
+  window.__render = render;
+})();
+</script>
+</body></html>

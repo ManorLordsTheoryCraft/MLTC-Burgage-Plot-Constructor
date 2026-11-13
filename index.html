@@ -1916,20 +1916,6 @@ var API = {
       ];
     };
 
-    if (r.shed && state.show.buildings) {
-      // The shed reads as one plant spot: the same 100-unit cell square at the
-      // shed-mesh centre, with the letter S instead of a spot number.
-      var sfr = cellFrame();
-      var sCell = cellSquare(r.shed.origin, sfr, 50.0);
-      out.push(poly(sCell.concat([sCell[0]]),
-        { fill: "none", stroke: "var(--plant)", "stroke-opacity": ".3",
-          "stroke-width": 0.8 }));
-      var stx = sx(r.shed.origin).toFixed(1), sty = sy(r.shed.origin).toFixed(1);
-      out.push("<text x=\"" + stx + "\" y=\"" + sty + "\" transform=\"rotate(" +
-        sfr.rot.toFixed(2) + " " + stx + " " + sty + ")\"" +
-        " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"plabel\">S</text>");
-    }
-
     if (r.plants && r.plants.count && state.show.plants) {
       var dots = [];
       if (state.show.plabels) {
@@ -1968,6 +1954,22 @@ var API = {
         }
       }
       out.push("<g>" + dots.join("") + "</g>");
+    }
+
+    // Shed spot last of the two so it paints OVER the plant spots (layer priority),
+    // matching its role as a building rather than a plant.
+    if (r.shed && state.show.buildings) {
+      // The shed reads as one plant spot: the same 100-unit cell square at the
+      // shed-mesh centre, with the letter S instead of a spot number.
+      var sfr = cellFrame();
+      var sCell = cellSquare(r.shed.origin, sfr, 50.0);
+      out.push(poly(sCell.concat([sCell[0]]),
+        { fill: "none", stroke: "var(--plant)", "stroke-opacity": ".3",
+          "stroke-width": 0.8 }));
+      var stx = sx(r.shed.origin).toFixed(1), sty = sy(r.shed.origin).toFixed(1);
+      out.push("<text x=\"" + stx + "\" y=\"" + sty + "\" transform=\"rotate(" +
+        sfr.rot.toFixed(2) + " " + stx + " " + sty + ")\"" +
+        " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"plabel\">S</text>");
     }
 
     if (r.fit.ok && state.show.labels) {
@@ -2650,6 +2652,42 @@ var API = {
   });
 
   window.addEventListener("resize", function () { M = metrics(); render(); });
+
+  // URL presets.  Any of these apply a custom plot before the first render:
+  //   ?p0=x,y&p1=x,y&p2=x,y&p3=x,y        explicit corners
+  //   ?c=x0,y0,x1,y1,x2,y2,x3,y3          8 numbers in P0..P3 order
+  //   ?c=x0,y0,x1,y1                      4 numbers -> axis-aligned rectangle
+  // #c=... and a bare hash (#0,0,4600,0,...) work the same way.
+  (function () {
+    var nums = function (s) {
+      var m = String(s || "").match(/-?\d+(?:\.\d+)?/g);
+      return m ? m.map(Number) : [];
+    };
+    var pair = function (s) {
+      var n = nums(s);
+      return n.length >= 2 ? [n[0], n[1], 0] : null;
+    };
+    var q = {};
+    (location.search.replace(/^\?/, "") + "&" + location.hash.replace(/^#/, "")).split("&").forEach(function (kv) {
+      var i = kv.indexOf("=");
+      if (i > 0) { q[kv.slice(0, i).toLowerCase()] = decodeURIComponent(kv.slice(i + 1)); }
+      else if (kv && kv.indexOf(",") >= 0) { q[""] = kv; }
+    });
+    var c = null;
+    var a = pair(q.p0), b = pair(q.p1), d = pair(q.p2), e = pair(q.p3);
+    if (a && b && d && e) {
+      c = [a, b, d, e];
+    } else {
+      var f = nums(q.c || q.corners || q.p || q[""]);
+      if (f.length >= 8) {
+        c = [[f[0], f[1], 0], [f[2], f[3], 0], [f[4], f[5], 0], [f[6], f[7], 0]];
+      } else if (f.length >= 4) {
+        // x0,y0,x1,y1 -> P0(x0,y0) P1(x1,y0) P2(x1,y1) P3(x0,y1)
+        c = [[f[0], f[1], 0], [f[2], f[1], 0], [f[2], f[3], 0], [f[0], f[3], 0]];
+      }
+    }
+    if (c) { state.corners = c; }
+  })();
 
   fitView();
   render();

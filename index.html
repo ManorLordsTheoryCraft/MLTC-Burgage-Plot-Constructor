@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Manor Lords Vegetable Plotter</title>
+<title>ManorLordsTheoryCraft Burgage Plot Constructor</title>
 <style>
 :root{
   --bg:#f6f7f9; --panel:#ffffff; --line:#dfe3e8; --ink:#1f2933; --muted:#66717f;
@@ -26,7 +26,7 @@ header p a:hover{color:#0f766e}
   border-radius:12px;padding:6px;height:calc(min(74vh,720px) * 1.4);display:flex;
   position:relative;overflow:auto}
 svg{width:100%;height:100%;display:block;touch-action:none;user-select:none}
-aside{flex:0 0 292px;display:flex;flex-direction:column;gap:12px}
+aside{flex:0 0 342px;display:flex;flex-direction:column;gap:12px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .card.model{height:min(74vh,720px);display:flex;flex-direction:column;min-height:0}
 .card.model #status{flex:1 1 auto;min-height:0;overflow-y:auto}
@@ -62,6 +62,44 @@ button{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:p
 button:hover{background:#f1f3f6}
 .btns{display:flex;gap:8px}
 .btns button{flex:1}
+/* Toggle button: filled while the mode is on, so the pressed state is visible
+   without reading the tooltip. */
+.btns button.toggle[aria-pressed="true"]{background:#1e293b;border-color:#1e293b;color:#fff}
+.btns button.toggle[aria-pressed="true"]:hover{background:#0f172a;border-color:#0f172a}
+.btns button.toggle[aria-pressed="false"]{color:#66717f}
+/* Square icon button: one glyph, no text, fixed 1:1 footprint.  Listed as
+   `.btns button.sqbtn` so it wins over the `.btns button{flex:1}` stretch rule. */
+.btns button.sqbtn{flex:0 0 auto;width:34px;height:34px;padding:0;display:inline-flex;
+  align-items:center;justify-content:center;font-size:17px;line-height:1}
+/* The rotate button carries the word ROT, so it needs the small caps size of
+   the lock buttons rather than the 17px glyph size. */
+.btns button.rotbtn{font-size:10.5px;font-weight:600;letter-spacing:.02em}
+/* Icon-only toggles (Snap, Ruler): each glyph is an inline SVG in currentColor,
+   so it inverts with the pressed fill.  They sit in wrappers so the disabled
+   state can still carry a hover tooltip - a disabled button never gets one. */
+.btns .tipwrap{display:inline-flex;flex:0 0 auto}
+.iconbtn svg{width:18px;height:18px;display:block}
+.btns button.iconbtn[aria-pressed="true"] svg{stroke-width:1.3}
+.btns button:disabled{opacity:.45;cursor:not-allowed}
+/* Point lock toggles: the point name over a small padlock.  Locked = filled
+   dark + closed shackle; unlocked = outlined with a dashed border + open
+   shackle, so the two states differ in fill, border and glyph at once. */
+.btns button.lockbtn{flex:0 0 auto;width:34px;height:34px;padding:0;gap:1px;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center}
+.lockbtn .lb{font-size:10.5px;line-height:1;letter-spacing:.02em}
+.lockbtn .lk{width:11px;height:11px;display:block}
+.lockbtn .lk .closed,.lockbtn .lk .open{fill:none;stroke:currentColor;
+  stroke-width:1.35;stroke-linecap:round}
+.lockbtn .lk rect{fill:currentColor}
+.lockbtn .lk .open{display:none}
+.lockbtn[aria-pressed="true"]{background:#1e293b;border-color:#1e293b;color:#fff}
+.lockbtn[aria-pressed="true"]:hover{background:#0f172a;border-color:#0f172a}
+.lockbtn[aria-pressed="false"]{border-style:dashed;color:#64748b}
+.lockbtn[aria-pressed="false"] .lk .closed{display:none}
+.lockbtn[aria-pressed="false"] .lk .open{display:inline}
+/* Tri-state tool toggle (Ruler): off / while-dragging (half-lit) / always. */
+.btns button.toggle[aria-pressed="mixed"]{background:#94a3b8;border-color:#94a3b8;color:#fff}
+.btns button.toggle[aria-pressed="mixed"]:hover{background:#7c8b9e;border-color:#7c8b9e}
 .dimrow{display:grid;grid-template-columns:52px 1fr 66px;gap:8px;align-items:center;
   margin-top:8px;font-size:12.5px;color:var(--muted)}
 .dimrow input[type=number]{width:100%;padding:2px 5px;border:1px solid var(--line);
@@ -89,8 +127,8 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
 </style></head>
 <body>
 <header>
-  <h1>Manor Lords Vegetable Plotter</h1>
-  <p>ManorLordsTheoryCraft 13 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
+  <h1>ManorLordsTheoryCraft Burgage Plot Constructor</h1>
+  <p>ManorLordsTheoryCraft 17 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
 </header>
 <div class="wrap">
   <div class="stage-col">
@@ -109,7 +147,7 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
         <span class="ly-state" id="st-zones">&mdash;</span></div>
       <div class="row"><label><input type="checkbox" id="ly-plants" checked>
         <i class="sw" style="background:var(--plant)"></i>Plants (100 grid)</label></div>
-      <div class="row"><label><input type="checkbox" id="ly-plabels" checked>
+      <div class="row"><label><input type="checkbox" id="ly-plabels">
         <i class="sw" style="background:var(--plant)"></i>Plant Labels</label></div>
       <div class="row"><label><input type="checkbox" id="ly-buildings" checked>
         <i class="sw b" style="background:var(--housefill)"></i>Buildings</label>
@@ -131,11 +169,29 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
           <option value="0" selected>4CP Square</option>
           <option value="1">2CP Linear</option>
           <option value="2">Tacticat BFD</option>
+          <option value="3">7F Linear</option>
+          <option value="4">6(H+S)</option>
           <option value="-1">Custom</option>
         </select></div>
-      <div id="manopt">
-        <div class="row"><label><input type="checkbox" id="snap"> Snap to Grid</label></div>
-      </div>
+      <div class="row"><label>Locks</label>
+        <div class="btns">
+          <button id="lock-p0" class="sqbtn lockbtn" aria-pressed="true">
+            <span class="lb">P0</span>
+            <svg class="lk" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path class="closed" d="M3.6 5.4V3.9a2.4 2.4 0 0 1 4.8 0v1.5"/>
+              <path class="open" d="M8.4 5.4V3.9a2.4 2.4 0 0 0-4.4-1"/>
+              <rect x="2.2" y="5.4" width="7.6" height="5.3" rx="1.2"/>
+            </svg>
+          </button>
+          <button id="lock-p1" class="sqbtn lockbtn" aria-pressed="true">
+            <span class="lb">P1</span>
+            <svg class="lk" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path class="closed" d="M3.6 5.4V3.9a2.4 2.4 0 0 1 4.8 0v1.5"/>
+              <path class="open" d="M8.4 5.4V3.9a2.4 2.4 0 0 0-4.4-1"/>
+              <rect x="2.2" y="5.4" width="7.6" height="5.3" rx="1.2"/>
+            </svg>
+          </button>
+        </div></div>
       <div id="dims" style="display:none">
         <div class="row"><label><input type="checkbox" id="square"> Make Square</label></div>
         <div class="dimrow"><span>Frontage</span>
@@ -144,6 +200,31 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
         <div class="dimrow"><span>Length</span>
           <input type="range" id="dim-l" min="100" max="20000" step="100">
           <input type="number" id="num-l" min="100" max="20000" step="100"></div>
+      </div>
+      <div class="btns" style="margin-top:8px"><button id="reset">Reset shape</button></div>
+    </div>
+    <div class="card">
+      <h2>Grid Control</h2>
+      <div class="btns">
+        <button id="rotate" class="sqbtn rotbtn" title="Rotate the map 90 degrees counter-clockwise"
+          aria-label="Rotate the map 90 degrees counter-clockwise">ROT</button>
+        <span class="tipwrap" id="snap-tip"><button id="snap" class="sqbtn toggle iconbtn" aria-pressed="true">
+          <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <path d="M3.2 2.6v4a2.8 2.8 0 0 0 5.6 0v-4" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M2.2 2.6h1.9M7.9 2.6h1.9" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button></span>
+        <span class="tipwrap" id="ruler-tip"><button id="ruler" class="sqbtn toggle iconbtn" aria-pressed="false">
+          <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <g transform="rotate(-45 6 6)" fill="none" stroke="currentColor"
+               stroke-width="1.15" stroke-linecap="round">
+              <rect x="1.3" y="4.5" width="9.4" height="3" rx="0.7"/>
+              <path d="M3.3 4.5v1.2M5.1 4.5v1.7M6.9 4.5v1.2M8.7 4.5v1.7"/>
+            </g>
+          </svg>
+        </button></span>
       </div>
     </div>
     <div class="card model">
@@ -161,8 +242,7 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
     <div class="card">
       <h2>View</h2>
       <div class="btns">
-        <button id="fit">Fit view</button>
-        <button id="reset">Reset shape</button>
+        <button id="fit" class="toggle" aria-pressed="true">Fit view</button>
       </div>
       <div class="row" style="margin-top:8px"><label><input type="checkbox" id="autozoom" checked>
         Autozoom</label></div>
@@ -1450,6 +1530,30 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
              arc: SHED_ARC, half: half };
   }
 
+  // Stand-in shed for a 0-bed extension.  The engine spawns NOTHING there --
+  // updateSubfield breaks out of the type-8 case right after cut 1, before the
+  // shed -- but the page keeps a reference point so the Plan panel and the
+  // Avg-distance row still mean something.  Same 300x300 box, centred on the
+  // primary house A transform.
+  function shedAt(origin, dir, half) {
+    half = (half === undefined) ? SHED_HALF : half;
+    var L = Math.sqrt(dir[0] * dir[0] + dir[1] * dir[1]);
+    if (!(L > 1e-9)) { return null; }
+    var dx = dir[0] / L, dy = dir[1] / L;
+    var px = dy, py = -dx;
+    var ox = origin[0], oy = origin[1];
+    return {
+      origin: [ox, oy], dir: [dx, dy], perp: [px, py], pushes: 0,
+      arc: null, half: half, standIn: true,
+      box: [
+        [ox - half * dx - half * px, oy - half * dy - half * py],
+        [ox + half * dx - half * px, oy + half * dy - half * py],
+        [ox + half * dx + half * px, oy + half * dy + half * py],
+        [ox - half * dx + half * px, oy - half * dy + half * py]
+      ]
+    };
+  }
+
 var API = {
     V: V, add: add, sub: sub, mul: mul, mid: mid, lerpPt: lerpPt, unit2: unit2,
     segSeg: segSeg, sideCrosses: sideCrosses, trimSide: trimSide, extractSide: extractSide,
@@ -1459,7 +1563,7 @@ var API = {
     boxHits: boxHits, sideGeometry: sideGeometry, slideUntilClear: slideUntilClear,
     pointInPoly: pointInPoly, isSimpleQuad: isSimpleQuad, winding: winding,
     buildExtensionForPlot: buildExtensionForPlot, generateExtension: generateExtension,
-    shedMesh: shedMesh,
+    shedMesh: shedMesh, shedAt: shedAt,
     fitHouses: fitHouses, fitSecondary: fitSecondary, previewA: previewA, previewSecondary: previewSecondary, buildBeds: buildBeds, plantGrid: plantGrid,
     shrubStats: shrubStats, edgeCount: edgeCount
   };
@@ -1480,10 +1584,23 @@ var API = {
   var state = {
     corners: START.map(function (p) { return p.slice(); }),
     frac: 0.5,
-    show: { grid: true, zones: false, plants: true, plabels: true, buildings: true, labels: false, dbg: false },
+    show: { grid: true, zones: false, plants: true, plabels: false, buildings: true, labels: false, dbg: false },
     autozoom: true,
     manual: true,
-    snap: false
+    snap: true,
+    // Ruler: a plain on/off switch, on by default.  It is not anchored on any
+    // corner - every pair of corners is measured.
+    ruler: true,
+    rot: 0,
+    // View card: keep the view fitted to the plot after every change.  Off
+    // freezes the current bounds so consecutive shapes can be compared.
+    fitView: true,
+    // Point locks.  Each point has one default restriction the page can
+    // enforce; locked is the default state.
+    //   lock0: P0 pinned at the origin (0,0) - no handle while locked.
+    //   lock1: P1 pinned to the street line (world Y = 0) - slides along it.
+    lock0: true,
+    lock1: true
   };
 
   // Area units.  The plot/extension area cells cycle on click; CP is the default.
@@ -1535,13 +1652,39 @@ var API = {
     return b;
   }
 
-  // The drawing surface: autozoom keeps the 900x868 viewBox scaled to the
-  // stage; with it off the canvas grows to the content at 22 px / 100 u and the
+  // The drawing surface.  Autozoom keeps a nominal 900-unit width and takes the
+  // height from the stage, so the viewBox aspect matches the element: the SVG
+  // then has nothing to letterbox and the drawing can use the whole panel.
+  // With autozoom off the canvas grows to the content at 22 px / 100 u and the
   // stage scrolls.
+  var stageEl = document.querySelector(".stage");
+  function stageRect() {
+    var w = (stageEl && stageEl.clientWidth) || 900;
+    var h = (stageEl && stageEl.clientHeight) || 868;
+    return { w: w, h: h };
+  }
+
   function layout() {
-    if (state.autozoom) { W = 900; H = 868; return; }
-    W = Math.ceil((view.maxy - view.miny) * FIXED_S + 2 * PAD);
-    H = Math.ceil((view.maxx - view.minx) * FIXED_S + 2 * PAD);
+    if (state.autozoom) {
+      var r = stageRect();
+      // Keep the drawing scale the page always had - the old 900x868 viewBox
+      // `meet`-fitted into the stage - so line weights, type and handles stay
+      // exactly as they were.  The canvas is then sized in those units to cover
+      // the stage, which fills the panel without changing how anything is drawn.
+      var k = Math.min(r.w / 900, r.h / 868) || 1;
+      W = Math.round(r.w / k);
+      H = Math.round(r.h / k);
+      return;
+    }
+    var ex = view.maxx - view.minx, ey = view.maxy - view.miny;
+    // Odd rotations swap the axes on screen, so the canvas swaps too.
+    if (state.rot & 1) {
+      W = Math.ceil(ex * FIXED_S + 2 * PAD);
+      H = Math.ceil(ey * FIXED_S + 2 * PAD);
+    } else {
+      W = Math.ceil(ey * FIXED_S + 2 * PAD);
+      H = Math.ceil(ex * FIXED_S + 2 * PAD);
+    }
   }
 
   function metrics() {
@@ -1549,12 +1692,37 @@ var API = {
     // (-dy, dx) on screen, so world Y runs across (leftwards) and world X down.
     var w = Math.max(view.maxy - view.miny, 1e-6);   // horizontal: Y
     var h = Math.max(view.maxx - view.minx, 1e-6);   // vertical:   X
-    var s = state.autozoom ? Math.min((W - 2 * PAD) / w, (H - 2 * PAD) / h) : FIXED_S;
-    return {
-      s: s, w: w, h: h,
-      ox: PAD,
-      oy: PAD + ((H - 2 * PAD) - h * s) / 2
-    };
+    // A 90/270 deg view rotation swaps the axes on screen, so the fit has to be
+    // solved against the swapped canvas: the Y extent becomes vertical and the X
+    // extent horizontal.  Fitting W x H in the drawing frame and then rotating
+    // would overflow a non-square canvas.
+    var s;
+    if (!state.autozoom) { s = FIXED_S; }
+    else if (state.rot & 1) { s = Math.min(W / h, H / w); }
+    else { s = Math.min(W / w, H / h); }
+    // Centred on both axes, and the rotation is about the canvas centre, so the
+    // rotated picture stays centred too.
+    return { s: s, w: w, h: h, ox: (W - w * s) / 2, oy: (H - h * s) / 2 };
+  }
+
+  function relayout() { layout(); M = metrics(); }
+
+  // Screen pixels per drawing unit; the ruler's own offsets are specified in CSS
+  // px (50 to the first row, 25 per step) so they do not scale with the plot.
+  function pxPerUnit() {
+    var w = 0;
+    try { w = svg.getBoundingClientRect().width; } catch (e) { w = 0; }
+    return (w > 0 && W > 0) ? w / W : 1;
+  }
+
+  // The ruler's two dimension bands live outside the plot, beyond +X (bottom on
+  // screen) and +Y (left).  Offsets are converted from px to world units with the
+  // live scale, so they read the same at any plot size.
+  function rulerGeom() {
+    var b = bbox(state.corners.concat([[0, 0, 0]]));
+    var kpx = (M && M.s > 0 ? M.s : 0.15) * pxPerUnit();   // px per world unit
+    if (!(kpx > 1e-6)) { kpx = 0.15; }
+    return { b: b, pad: 50 / kpx, step: 25 / kpx };
   }
 
   function fitView() {
@@ -1563,8 +1731,20 @@ var API = {
     var w = Math.max(b.maxx - b.minx, 600), h = Math.max(b.maxy - b.miny, 600);
     var m = 0.12 * Math.max(w, h);
     view = { minx: b.minx - m, maxx: b.maxx + m, miny: b.miny - m, maxy: b.maxy + m };
-    layout();
-    M = metrics();
+    if (state.manual && state.ruler) {
+      var rg = rulerGeom();
+      view.maxx = Math.max(view.maxx, b.maxx + rg.pad + 6.6 * rg.step);
+      view.maxy = Math.max(view.maxy, b.maxy + rg.pad + 6.6 * rg.step);
+    }
+    relayout();
+  }
+
+  // Fitting is a mode, not a one-shot (View card, on by default): while it is
+  // on, every shape change re-fits the view to the plot.  Switched off, the
+  // view bounds stay put, so two shapes can be compared at one scale - the
+  // canvas still has to re-derive its size/metrics, hence relayout().
+  function autoFit() {
+    if (state.fitView) { fitView(); } else { relayout(); }
   }
 
   // world -> screen, display rotated clockwise 90 deg: (x, y) -> (-y, x).
@@ -1591,6 +1771,17 @@ var API = {
       "\" class=\"hlabel\" fill=\"" + colour + "\" font-size=\"" + (size || 11.5) + "\">" + s + "</text>";
   }
 
+  // Centred on the point and rotated about it: used for the drag legs, whose
+  // numbers sit on the dotted line.  A background halo keeps them readable
+  // where the line runs underneath.
+  function textRot(p, s, colour, dx, dy, size, deg) {
+    var x = (sx(p) + dx).toFixed(1), y = (sy(p) + dy).toFixed(1);
+    return "<text x=\"" + x + "\" y=\"" + y + "\" transform=\"rotate(" + deg + " " + x + " " + y + ")\"" +
+      " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"hlabel\" fill=\"" + colour +
+      "\" paint-order=\"stroke\" stroke=\"var(--bg)\" stroke-width=\"3\"" +
+      " stroke-linejoin=\"round\" font-size=\"" + (size || 11.5) + "\">" + s + "</text>";
+  }
+
   // The A/B preview components are a 100x100 /Engine/BasicShapes/Plane scaled
   // 7x12 (A: 700x1200) and 4x8 (B: 400x800), sampling bluredFrame with plain
   // UV0 (full-bleed).  There is no separate frame transform: the shaded
@@ -1614,20 +1805,56 @@ var API = {
       "width=\"1\" height=\"1\" preserveAspectRatio=\"none\" transform=\"" + m + "\"/></mask>";
   }
 
+  // Grid numbers are collected here and rendered OUTSIDE the rotated group, on
+  // the rotated block's left and bottom edges, so they always sit on those two
+  // sides of the canvas.
+  var pendingGridLabels = [];
+
+  // Compass words, in the drawing frame.  They are drawn outside the rotated
+  // group so an upright label keeps its own anchor: the map rotation is applied
+  // to the anchor point only, then the word is nudged toward the canvas centre
+  // and clamped inside it, so it is visible at every rotation without moving the
+  // arrows.
+  var compassText = [];
+
+  function compassLabelsSvg() {
+    var txt = [];
+    for (var i = 0; i < compassText.length; i++) {
+      var c = compassText[i], p = rotScreen(c.x, c.y);
+      var dx = W / 2 - p[0], dy = H / 2 - p[1];
+      var len = Math.hypot(dx, dy) || 1;
+      var lx = p[0] + (dx / len) * 24, ly = p[1] + (dy / len) * 24;
+      lx = Math.min(W - 34, Math.max(34, lx));
+      ly = Math.min(H - 12, Math.max(16, ly));
+      txt.push("<text class=\"glabel\" text-anchor=\"middle\" x=\"" + lx.toFixed(1) +
+        "\" y=\"" + ly.toFixed(1) + "\" style=\"fill:#334155;font-weight:600\"" +
+        " paint-order=\"stroke\" stroke=\"#fff\" stroke-width=\"3\" stroke-linejoin=\"round\">" +
+        c.name + "</text>");
+    }
+    return txt.join("");
+  }
+
   function gridLayer() {
     var out = [];
-    // The grid block is the view window on screen.  Ticking has to start at the
-    // first step INSIDE it: floor() emits one line past minx/maxy, which is
-    // drawn where the opposite grid lines do not reach, so it reads as a
-    // detached line floating outside the grid.
+    // The paper fills the whole canvas, not just the fitted view window: lines
+    // are drawn over a centred square of side max(W, H), which still covers the
+    // canvas after any 90 deg view rotation (the root SVG clips the overhang).
+    // The world range is read back from that square's edges with the inverse of
+    // sh()/sv(), so the lattice stays locked to world multiples of STEP.
     //
     // The display is rotated 90 deg clockwise: X is the VERTICAL axis (ticks are
     // horizontal lines, numbers down the left edge) and Y the horizontal one
     // (ticks are vertical lines, numbers under the bottom edge).
-    var bx0 = sh(view.maxy), bx1 = sh(view.miny);
-    var by0 = sv(view.minx), by1 = sv(view.maxx);
-    var x0 = Math.ceil(view.minx / STEP) * STEP;
-    var y0 = Math.ceil(view.miny / STEP) * STEP;
+    var S = Math.max(W, H), half = S / 2, cx = W / 2, cy = H / 2;
+    var bx0 = cx - half, bx1 = cx + half, by0 = cy - half, by1 = cy + half;
+    var yA = view.maxy - (bx0 - M.ox) / M.s;   // world Y at the square's left edge
+    var yB = view.maxy - (bx1 - M.ox) / M.s;   // ... at its right edge
+    var xA = view.minx + (by0 - M.oy) / M.s;   // world X at its top edge
+    var xB = view.minx + (by1 - M.oy) / M.s;   // ... at its bottom edge
+    var x0 = Math.ceil(Math.min(xA, xB) / STEP) * STEP;
+    var xEnd = Math.max(xA, xB);
+    var y0 = Math.ceil(Math.min(yA, yB) / STEP) * STEP;
+    var yEnd = Math.max(yA, yB);
     var majorStep = Math.abs(STEP * 2);
     var clamp = function (v, lo, hi) { return Math.min(hi, Math.max(lo, v)); };
     // Keep tick text from colliding when the view is zoomed far out: number
@@ -1637,22 +1864,19 @@ var API = {
     var numbered = function (v) {
       return Math.abs(Math.round(v / majorStep) % labStride) < 1e-9;
     };
-    for (var x = x0; x <= view.maxx; x += STEP) {
+    for (var x = x0; x <= xEnd; x += STEP) {
       var isAxis = Math.abs(x) < 1e-9;
       var major = Math.abs(Math.round(x) % majorStep) < 1e-9;
       out.push("<line x1=\"" + bx0.toFixed(1) + "\" y1=\"" + sv(x).toFixed(1) +
         "\" x2=\"" + bx1.toFixed(1) + "\" y2=\"" + sv(x).toFixed(1) +
         "\" stroke=\"" + (isAxis ? "var(--axis)" : major ? "var(--grid10)" : "var(--grid)") +
         "\" stroke-width=\"" + (isAxis ? 1.6 : 1) + "\"/>");
-      // Tick labels belong to the grid block, not to the SVG canvas: pinned to
-      // the canvas edge they sit a long way from the lines they number.
+      // Numbers are drawn later, outside the rotation, along the canvas edges.
       if (major && numbered(x)) {
-        out.push("<text class=\"glabel\" text-anchor=\"end\" x=\"" + (bx0 - 5).toFixed(1) +
-          "\" y=\"" + clamp(sv(x) + 3.5, 10, H - 3).toFixed(1) + "\">" +
-          Math.round(x) + "</text>");
+        pendingGridLabels.push({ kind: "x", v: Math.round(x), at: sv(x) });
       }
     }
-    for (var y = y0; y <= view.maxy; y += STEP) {
+    for (var y = y0; y <= yEnd; y += STEP) {
       var isAxisY = Math.abs(y) < 1e-9;
       var majorY = Math.abs(Math.round(y) % majorStep) < 1e-9;
       out.push("<line x1=\"" + sh(y).toFixed(1) + "\" y1=\"" + by0.toFixed(1) +
@@ -1660,50 +1884,85 @@ var API = {
         "\" stroke=\"" + (isAxisY ? "var(--axis)" : majorY ? "var(--grid10)" : "var(--grid)") +
         "\" stroke-width=\"" + (isAxisY ? 1.6 : 1) + "\"/>");
       if (majorY && numbered(y)) {
-        out.push("<text class=\"glabel\" text-anchor=\"middle\" x=\"" +
-          clamp(sh(y), 18, W - 18).toFixed(1) + "\" y=\"" +
-          clamp(by1 + 14, 12, H - 4).toFixed(1) + "\">" + Math.round(y) + "</text>");
+        pendingGridLabels.push({ kind: "y", v: Math.round(y), at: sh(y) });
       }
     }
-    // North = the most negative visible Y, i.e. the right-hand end of the Y
-    // axis (the line x = 0, which runs across the screen).
-    var ny = clamp(sv(0), by0 + 8, by1 - 8);
-    if (bx1 > 26) {
-      out.push("<path d=\"M " + (bx1 - 1).toFixed(1) + " " + ny.toFixed(1) +
-        " L " + (bx1 - 13).toFixed(1) + " " + (ny - 6).toFixed(1) +
-        " L " + (bx1 - 13).toFixed(1) + " " + (ny + 6).toFixed(1) +
+    // Compass arrows stay in the drawing frame; their labels are collected here
+    // and placed in screen space (compassLabelsSvg) so an upright word anchored
+    // at the axis end can never be carried off-canvas by the view rotation.
+    var ex0 = 0, ex1 = W, ey0 = 0, ey1 = H;
+    var ny = clamp(sv(0), ey0 + 8, ey1 - 8);
+    if (ex1 > 26) {
+      out.push("<path d=\"M " + (ex1 - 1).toFixed(1) + " " + ny.toFixed(1) +
+        " L " + (ex1 - 13).toFixed(1) + " " + (ny - 6).toFixed(1) +
+        " L " + (ex1 - 13).toFixed(1) + " " + (ny + 6).toFixed(1) +
         " Z\" fill=\"var(--axis)\"/>");
-      out.push("<text class=\"glabel\" text-anchor=\"end\" x=\"" + (bx1 - 16).toFixed(1) +
-        "\" y=\"" + (ny - 9).toFixed(1) + "\" style=\"fill:#334155;font-weight:600\">North</text>");
+      compassText.push({ name: "North", x: ex1 - 12, y: ny - 9 });
     }
-    // East = the most positive visible X, i.e. the bottom end of the X axis
-    // (the line y = 0, which runs down the screen).
-    var ex = clamp(sh(0), bx0 + 8, bx1 - 8);
-    if (by1 > 26) {
-      out.push("<path d=\"M " + ex.toFixed(1) + " " + (by1 - 1).toFixed(1) +
-        " L " + (ex - 6).toFixed(1) + " " + (by1 - 13).toFixed(1) +
-        " L " + (ex + 6).toFixed(1) + " " + (by1 - 13).toFixed(1) +
+    var ex = clamp(sh(0), ex0 + 8, ex1 - 8);
+    if (ey1 > 26) {
+      out.push("<path d=\"M " + ex.toFixed(1) + " " + (ey1 - 1).toFixed(1) +
+        " L " + (ex - 6).toFixed(1) + " " + (ey1 - 13).toFixed(1) +
+        " L " + (ex + 6).toFixed(1) + " " + (ey1 - 13).toFixed(1) +
         " Z\" fill=\"var(--axis)\"/>");
-      out.push("<text class=\"glabel\" text-anchor=\"start\" x=\"" +
-        clamp(ex + 10, 4, W - 34).toFixed(1) + "\" y=\"" + (by1 - 3).toFixed(1) +
-        "\" style=\"fill:#334155;font-weight:600\">East</text>");
+      compassText.push({ name: "East", x: Math.min(W - 26, Math.max(26, ex + 10)), y: ey1 - 6 });
     }
     return out.join("");
   }
 
+  // Map a base-frame screen point through the view rotation (same matrix as
+  // the drawing group: rotate(-90*rot) about the canvas centre).
+  function rotScreen(x, y) {
+    if (!state.rot) { return [x, y]; }
+    var cx = W / 2, cy = H / 2, dx = x - cx, dy = y - cy;
+    if (state.rot === 1) { return [cx + dy, cy - dx]; }
+    if (state.rot === 2) { return [cx - dx, cy - dy]; }
+    return [cx - dy, cy + dx];
+  }
+
+  // Screen-space grid numbers: always the rotated canvas's LEFT and BOTTOM
+  // edge, inset a few px and haloed in white so they stay readable on top of
+  // the paper (the grid now runs edge to edge, so there is no outer gutter).
+  function gridLabels() {
+    if (!pendingGridLabels.length) { return ""; }
+    var halo = " paint-order=\"stroke\" stroke=\"#fff\" stroke-width=\"3\" stroke-linejoin=\"round\"";
+    var txt = [];
+    for (var i = 0; i < pendingGridLabels.length; i++) {
+      var L = pendingGridLabels[i];
+      // Where the line lands after the view rotation, and whether it ends up
+      // horizontal (left label) or vertical (bottom label).
+      var q = (L.kind === "x") ? rotScreen(0, L.at) : rotScreen(L.at, 0);
+      var horiz = (L.kind === "x") ? !(state.rot & 1) : !!(state.rot & 1);
+      if (horiz) {
+        txt.push("<text class=\"glabel\" text-anchor=\"start\" x=\"7\" y=\"" +
+          Math.min(H - 6, Math.max(12, q[1] + 4)).toFixed(1) + "\"" + halo + ">" +
+          L.v + "</text>");
+      } else {
+        txt.push("<text class=\"glabel\" text-anchor=\"middle\" x=\"" +
+          Math.min(W - 16, Math.max(16, q[0])).toFixed(1) + "\" y=\"" +
+          (H - 7).toFixed(1) + "\"" + halo + ">" + L.v + "</text>");
+      }
+    }
+    return txt.join("");
+  }
+
   function handle(p, i) {
-    var cx = sx(p).toFixed(1), cy = sy(p).toFixed(1);
-    var locked = i === 0;
-    var ring = locked
-      ? "<rect x=\"" + (sx(p) - 5.5).toFixed(1) + "\" y=\"" + (sy(p) - 5.5).toFixed(1) +
+    var x = sx(p), y = sy(p);
+    var cx = x.toFixed(1), cy = y.toFixed(1);
+    // A square handle means the point is locked to a rail and can only slide
+    // along it: P1 on the street line while lock1 is on.  A circle is a free
+    // corner.  P0 has no handle at all while it is pinned to the origin.
+    var square = (i === 1 && state.lock1);
+    var mark = square
+      ? "<rect x=\"" + (x - 5.5).toFixed(1) + "\" y=\"" + (y - 5.5).toFixed(1) +
         "\" width=\"11\" height=\"11\" fill=\"#fff\" stroke=\"var(--plot)\" stroke-width=\"2.2\"/>"
       : "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"7\" fill=\"#fff\" stroke=\"var(--plot)\" stroke-width=\"2.2\"/>";
-    return "<g class=\"handle" + (locked ? " locked" : "") + "\" data-i=\"" + i + "\">" +
-      "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"18\" fill=\"transparent\"/>" + ring + "</g>";
+    return "<g class=\"handle\"" + (square ? " data-axis=\"1\"" : "") + " data-i=\"" + i + "\">" +
+      "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"18\" fill=\"transparent\"/>" + mark + "</g>";
   }
 
   function cornerLabel(p, i) {
-    return text(p, "P" + i + (i === 0 ? " (fixed)" : ""), "#334155", 10, -10, 12.5);
+    return text(p, "P" + i, "#334155", 10, -10, 12.5);
   }
 
   // Centred label inside a polygon (house / shed decals).
@@ -1805,16 +2064,30 @@ var API = {
     } else if (fit && fit.ok && !houses.houseShape) {
       fit = { ok: false, reason: "no house fit - no backyard", trace: fit.trace };
     }
-    var beds = null, plants = null, plantsAt = null, shed = null;
+    var beds = null, plants = null, plantsAt = null, shed = null, shedStandIn = false;
     if (fit.ok) {
       beds = B.buildBeds(fit.quad, state.frac, fit.profile);
       // No bed records -> the engine still rasterises the extension polygon
       // (live 2026-11-09: 0 beds, 188 plants, exact).  So plants do not
       // require beds.
       plants = B.plantGrid((beds && beds.ok) ? beds : {}, fit.quad, fit.profile);
-      // The vegetable-garden shed mesh: placed from the extension's C1->P2 side,
-      // not from the cut-6 "shed" polygon.
-      shed = B.shedMesh(fit.profile, fit.quad);
+      // The vegetable-garden shed (extension_vegetableShedA/B) is spawned at the
+      // END of updateSubfield's type-8 case, i.e. AFTER all six bed cuts.  The
+      // cut-1 guard (`if cornersA < 4 || cornersB < 4`) takes an early branch
+      // that spawns only extension_clutter_* props and `break`s, so a 0-bed
+      // extension gets NO shed and NO dirt planes (live 2026-11-17: the selected
+      // P2-corner garden has buildings = [] and dirtPlanes = 0, while a bedded
+      // one has 22 props + 5 planes).
+      //
+      // The page still keeps a reference point in that case: the same 300x300
+      // box relocated to the primary house A transform, flagged as a stand-in,
+      // so the Plan panel and Avg distance still read something meaningful.
+      if (beds && beds.ok) {
+        shed = B.shedMesh(fit.profile, fit.quad);
+      } else {
+        shed = B.shedAt(aDecal.origin, aDecal.dir);
+        shedStandIn = true;
+      }
       if (beds && beds.ok) {
         plantsAt = [0.0, 1.0].map(function (f) {
           var b = B.buildBeds(fit.quad, f, fit.profile);
@@ -1828,15 +2101,169 @@ var API = {
              preview: preview, fit: fit, aDecal: aDecal, aDecalTrace: aDecalTrace,
              houses: houses, secondary: secondary, secTrace: secTrace,
              bPartWontFit: bPartWontFit, aFullFacade: aFullFacade,
-             beds: beds, plants: plants, plantsAt: plantsAt, shed: shed };
+             beds: beds, plants: plants, plantsAt: plantsAt, shed: shed,
+             shedStandIn: shedStandIn };
+  }
+
+  // Coordinate text shared by the P0-P3 rows and the ?c= URL, so they always
+  // show the same number (1 decimal, no trailing .0 on whole values).
+  function fmtCoord(v) {
+    var q = Math.round(v * 10) / 10;
+    return (q % 1 === 0) ? String(q) : q.toFixed(1);
+  }
+
+  // --------------------------------------------------------------- quanta
+  // Shorthand for the ruler: the same length as a whole (or half) of a named
+  // plot quantum.  Integer forms win over halves, and the list is ordered
+  // largest-first so ties go to the bigger quantum (2300 reads "1.0 CP", never
+  // "2.1 HC").  Returns null when nothing divides the length, in which case the
+  // ruler prints the plain number.  One decimal is always shown: "2.0 CP".
+  var QUANTA = [[2300, "CP"], [1200, "F"], [1100, "H"], [400, "S"]];
+  var FRAC_MIN = 800;      // fractions only at or above this length
+  var MAX_COEF = 12;       // largest coefficient a fraction's inner sum may carry
+
+  // Every term m x Q with m a multiple of 0.5 (integer multiples always, x.5 only
+  // when halves are allowed).  Cost is the coefficient rounded up, so 0.5 and 1.5
+  // cost 1 and 2 labour points.
+  function quantTerms(v, allowHalf) {
+    var list = [], i, k;
+    for (i = 0; i < QUANTA.length; i++) {
+      var Q = QUANTA[i][0], name = QUANTA[i][1];
+      var kMax = Math.min(MAX_COEF * 2, Math.floor(2 * (v + 1e-6) / Q));
+      for (k = 1; k <= kMax; k++) {
+        if ((k % 2) && !allowHalf) { continue; }      // odd k = an x.5 coefficient
+        var coef = k / 2;
+        list.push({ val: coef * Q, cost: Math.ceil(coef), coef: coef,
+                    text: (coef % 1 === 0 ? String(coef) : coef.toFixed(1)) + name });
+      }
+    }
+    return list;
+  }
+
+  // Cheapest way to write v as one term or as the sum of two.
+  function bestForm(v, allowHalf) {
+    var list = quantTerms(v, allowHalf), i, j;
+    var single = null, best = null;
+    for (i = 0; i < list.length; i++) {
+      if (Math.abs(list[i].val - v) > 1e-6) { continue; }
+      if (!single || list[i].cost < single.cost) { single = list[i]; }
+    }
+    for (i = 0; i < list.length; i++) {
+      for (j = i; j < list.length; j++) {
+        if (Math.abs(list[i].val + list[j].val - v) > 1e-6) { continue; }
+        var a = list[i].val >= list[j].val ? list[i] : list[j];
+        var b = list[i].val >= list[j].val ? list[j] : list[i];
+        var cost = a.cost + b.cost;
+        var text = a.text + b.text;
+        var fits = !best || cost < best.cost ||
+          (cost === best.cost && a.val > best.first + 1e-9) ||
+          (cost === best.cost && Math.abs(a.val - best.first) < 1e-9 && text.length < best.text.length);
+        if (fits) {
+          best = { cost: cost, first: a.val, text: text, terms: 2,
+                   maxCoef: Math.max(a.coef, b.coef) };
+        }
+      }
+    }
+    if (single && (!best || single.cost <= best.cost)) {
+      return { text: single.text, cost: single.cost, terms: 1, maxCoef: single.coef };
+    }
+    return best;
+  }
+
+  // Pass 1 - whole quanta only, up to two terms.
+  function cleanLabel(v) {
+    var f = bestForm(v, false);
+    return f ? f.text : null;
+  }
+
+  // Pass 2 - the fraction covers the WHOLE combination: "1/2 of (2 CP)",
+  // "1/4 of (3 FW)".  The bracket must itself be whole quanta, so a fractional
+  // term can never be mixed with a whole one.
+  function fracLabel(v) {
+    var best = null, n, inner, cand;
+    for (n = 2; n <= 4; n++) {
+      inner = bestForm(v * n, false);
+      if (!inner || inner.maxCoef > MAX_COEF) { continue; }
+      cand = { n: n, text: "1/" + n + " of " + inner.text, terms: inner.terms };
+      var fits = !best || cand.terms < best.terms ||
+        (cand.terms === best.terms && cand.n < best.n) ||
+        (cand.terms === best.terms && cand.n === best.n && cand.text.length < best.text.length);
+      if (fits) { best = cand; }
+    }
+    return best ? best.text : null;
+  }
+
+  function quantumLabel(v, allowFrac) {
+    if (!(v > 0)) { return null; }
+    // Least labour first, and a clean form (whole quanta) always wins: the inner
+    // combination of a fraction still has to be built, so a fraction is only used
+    // when no clean form exists at all.
+    var clean = cleanLabel(v);
+    if (clean) { return clean; }
+    if (!allowFrac || v < FRAC_MIN - 1e-6) { return null; }
+    return fracLabel(v);
+  }
+
+  // Strict point-in-polygon: a point on an edge counts as OUTSIDE, since the
+  // ruler is happy to elbow on a plot edge but not inside the plot.
+  function insidePoly(pts, p) {
+    var i, j, inside = false;
+    for (i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      var a = pts[i], b = pts[j];
+      var ex = b[0] - a[0], ey = b[1] - a[1];
+      var len2 = ex * ex + ey * ey;
+      if (len2 > 1e-9) {
+        var t = ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / len2;
+        t = Math.max(0, Math.min(1, t));
+        var ddx = p[0] - (a[0] + t * ex), ddy = p[1] - (a[1] + t * ey);
+        if (ddx * ddx + ddy * ddy < 1e-6) { return false; }
+      }
+      if (((a[1] > p[1]) !== (b[1] > p[1])) &&
+          (p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0])) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  // Keep the address bar in step with the plot: ?c=x0,y0,x1,y1,x2,y2,x3,y3.
+  // replaceState (not pushState) so dragging does not flood the history.
+  function syncUrl() {
+    var list = state.corners.slice(0, 4).map(function (p) {
+      return fmtCoord(p[0]) + "," + fmtCoord(p[1]);
+    }).join(",");
+    var want = "?c=" + list;
+    if (location.search === want && !location.hash) { return; }
+    try { history.replaceState(null, "", want); } catch (e) { /* file:// */ }
+  }
+
+  // Text is counter-rotated inside the rotated map so every label stays at its
+  // original screen orientation (plain labels upright, aligned labels keep
+  // their own angle).  Existing rotate() angles are shifted, same anchor.
+  function uprightText(html, c) {
+    if (!c) { return html; }
+    return html.replace(/<text\b([^>]*)>/g, function (m, attrs) {
+      var tm = /\btransform="rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)"/.exec(attrs);
+      if (tm) {
+        return m.replace(tm[0], 'transform="rotate(' + (parseFloat(tm[1]) + c) + ' ' +
+          tm[2] + ' ' + tm[3] + ')"');
+      }
+      var xm = /\bx="([-\d.]+)"/.exec(attrs);
+      var ym = /\by="([-\d.]+)"/.exec(attrs);
+      if (!xm || !ym) { return m; }
+      return "<text" + attrs + " transform=\"rotate(" + c + " " + xm[1] + " " + ym[1] + ")\">";
+    });
   }
 
   function render() {
     var r = compute();
     last = r;
     if (syncPreset) { syncPreset(); }
+    syncUrl();
     var out = [];
 
+    pendingGridLabels.length = 0;
+    compassText.length = 0;
     if (state.show.grid) { out.push(gridLayer()); }
 
     out.push(poly(r.corners.concat([r.corners[0]]),
@@ -1898,6 +2325,22 @@ var API = {
       out.push(poly(r.beds.shed, { fill: "#fef9c3", stroke: "var(--shed)",
         "stroke-width": 1.6, "stroke-dasharray": "4 3" }));
       out.push(text(r.beds.shed[0], "shed area", "#a16207", 5, 13, 10.5));
+    }
+
+    // The C0 -> C1 demarcation is drawn unconditionally and in exactly the same
+    // format as the P0..P3 plot outline (same stroke, same width), so the
+    // backyard boundary reads as part of the plot's own linework instead of a
+    // Labels-layer annotation.  It sits above the ground layers (decals, beds)
+    // so it stays readable with Backyard Zones on - bed 1 overlaps this line by
+    // the engine's +150 shift - and below the plants.
+    // Every cut body starts its ring on that edge: a normal cut is C0->C1, and
+    // a corner cut keeps H1->H2 as its first edge, so ring[0]->ring[1] is the cut.
+    if (r.fit.ok) {
+      var cutRing = (r.fit.profile && r.fit.profile.length > 1) ? r.fit.profile : r.fit.quad;
+      if (cutRing && cutRing.length > 1) {
+        out.push(poly([cutRing[0], cutRing[1]],
+          { fill: "none", stroke: "var(--plot)", "stroke-width": 2.2 }));
+      }
     }
     // The extension cutter frame, shared by the plant label cells and the shed spot:
     // e1 = (uy,-ux), e2 = (ux,uy) from P1->P2, so both share the extension's rotation.
@@ -1983,9 +2426,6 @@ var API = {
       var ring = (r.fit.profile && r.fit.profile.length > 3) ? r.fit.profile : r.fit.quad;
       out.push(poly(ring.concat([ring[0]]),
         { fill: "none", stroke: "var(--quad)", "stroke-width": 2.6 }));
-      out.push("<line x1=\"" + sx(r.fit.quad[0]).toFixed(1) + "\" y1=\"" + sy(r.fit.quad[0]).toFixed(1) +
-        "\" x2=\"" + sx(r.fit.quad[1]).toFixed(1) + "\" y2=\"" + sy(r.fit.quad[1]).toFixed(1) +
-        "\" stroke=\"var(--quad)\" stroke-width=\"6\" stroke-opacity=\".18\"/>");
       var placed = [];
       ["C0", "C1", "C2", "C3"].forEach(function (lab, i) {
         var p = r.fit.quad[i];
@@ -2015,11 +2455,188 @@ var API = {
       }
     }
 
+    // Ruler visibility: a plain two-state switch, always-on by default.  Edge
+    // Mode has no plot corners to measure against, so it is off there entirely.
+    var showRuler = state.manual && state.ruler;
+
     for (var i = 0; i < 4; i++) {
       // Manual mode owns the handles; with it off the corners are set by the
-      // Plot Control sliders, so no grab targets are drawn at all.
-      if (state.manual) { out.push(handle(r.corners[i], i)); }
-      if (state.show.labels) { out.push(cornerLabel(r.corners[i], i)); }
+      // Plot Control sliders, so no grab targets are drawn at all.  A locked
+      // P0 is pinned to the origin and has no handle until it is released.
+      if (state.manual && (i !== 0 || !state.lock0)) { out.push(handle(r.corners[i], i)); }
+      // Point labels normally belong to the Labels layer, but while the ruler is
+      // showing they are drawn too so the legs can be read against them.
+      if (state.show.labels || showRuler) { out.push(cornerLabel(r.corners[i], i)); }
+    }
+
+    // Ruler: two dimension bands outside the plot.  Pairs are measured, then the
+    // spans are reduced to an ADJACENT CHAIN per axis: on x = 0, 400, 3400, 4600
+    // keep 400 + 3000 + 1200 and drop 3400, 4200 and 4600, which are sums of
+    // those.  No redundant row, no line crossing the shape.
+    if (showRuler) {
+      var rg = rulerGeom();
+      var yBase = rg.b.maxy + rg.pad;      // DX rows, marching left on screen
+      var xBase = rg.b.maxx + rg.pad;      // DY rows, marching down the screen
+      var i2, j2;
+      var fracOk = (function (c) {
+        for (var ci2 = 0; ci2 < 2; ci2++) {
+          var A = c[ci2], B = c[(ci2 + 1) % 4], D = c[(ci2 + 3) % 4];
+          var ux = B[0] - A[0], uy = B[1] - A[1];
+          var wx = D[0] - A[0], wy = D[1] - A[1];
+          var lu = Math.hypot(ux, uy), lw = Math.hypot(wx, wy);
+          if (lu < 1e-6 || lw < 1e-6) { return false; }
+          if (Math.abs(ux * wx + uy * wy) > 1e-9 * lu * lw) { return false; }
+        }
+        return true;
+      })(r.corners);
+
+      // Every pair's component span, per axis.  Spans between ADJACENT corners
+      // are real edges of the plot, so they are always kept even when they are
+      // the sum of chain spans (the frontage must be readable as one number).
+      var spansX = [], spansY = [];
+      var adjacent = function (a, b) {
+        var lo = Math.min(a, b), hi = Math.max(a, b);
+        return (lo === 0 && hi === 1) || (lo === 1 && hi === 2) ||
+               (lo === 2 && hi === 3) || (lo === 0 && hi === 3);
+      };
+      for (i2 = 0; i2 < 4; i2++) {
+        for (j2 = i2 + 1; j2 < 4; j2++) {
+          var cA = state.corners[i2], cB = state.corners[j2];
+          var isEdge = adjacent(i2, j2);
+          if (Math.abs(cB[0] - cA[0]) > 0.5) {
+            spansX.push({ lo: Math.min(cA[0], cB[0]), hi: Math.max(cA[0], cB[0]), edge: isEdge });
+          }
+          if (Math.abs(cB[1] - cA[1]) > 0.5) {
+            spansY.push({ lo: Math.min(cA[1], cB[1]), hi: Math.max(cA[1], cB[1]), edge: isEdge });
+          }
+        }
+      }
+      var axisKey = function (lo, hi) { return Math.round(lo * 10) + ":" + Math.round(hi * 10); };
+      // Keep spans between neighbouring coordinates (the chain) plus every edge
+      // span; anything else is a sum of kept dimensions.
+      var chain = function (list) {
+        if (!list.length) { return []; }
+        var vals = [], i;
+        for (i = 0; i < list.length; i++) { vals.push(list[i].lo, list[i].hi); }
+        vals.sort(function (a, b) { return a - b; });
+        var uniq = [];
+        for (i = 0; i < vals.length; i++) {
+          if (!uniq.length || Math.abs(uniq[uniq.length - 1] - vals[i]) > 0.5) { uniq.push(vals[i]); }
+        }
+        var chainKeys = {};
+        for (i = 0; i + 1 < uniq.length; i++) { chainKeys[axisKey(uniq[i], uniq[i + 1])] = 1; }
+        var res = [], seen = {}, k;
+        for (i = 0; i < list.length; i++) {
+          k = axisKey(list[i].lo, list[i].hi);
+          if (seen[k]) { continue; }
+          if (!list[i].edge && !chainKeys[k]) { continue; }
+          seen[k] = 1;
+          res.push(list[i]);
+        }
+        res.sort(function (a, b) { return a.lo - b.lo; });
+        return res;
+      };
+      var rowX = chain(spansX), rowY = chain(spansY);
+
+      var extLine = function (ax, ay, bx2, by2) {
+        // Clip the run where it leaves the shape, so no extension line crosses
+        // the interior; its x/y still identifies the corner.
+        var K2 = 60, k2, lastIn = -1;
+        for (k2 = 1; k2 < K2; k2++) {
+          var tt = k2 / K2;
+          if (insidePoly(r.corners, [ax + (bx2 - ax) * tt, ay + (by2 - ay) * tt])) { lastIn = tt; }
+        }
+        // Overshoot by 1.5 samples so the start sits clearly outside: a single
+        // sample can still land inside and leave a stub crossing the edge.
+        var t0 = lastIn < 0 ? 0 : lastIn + 1.5 / K2;
+        var sx0 = ax + (bx2 - ax) * t0, sy0 = ay + (by2 - ay) * t0;
+        out.push("<line x1=\"" + sx([sx0, sy0, 0]).toFixed(1) + "\" y1=\"" + sy([sx0, sy0, 0]).toFixed(1) +
+          "\" x2=\"" + sx([bx2, by2, 0]).toFixed(1) + "\" y2=\"" + sy([bx2, by2, 0]).toFixed(1) +
+          "\" stroke=\"#dc2626\" stroke-width=\"0.8\" stroke-opacity=\".5\"/>");
+      };
+      var tickAt = function (wx, wy, alongX) {
+        var tx = sx([wx, wy, 0]), ty = sy([wx, wy, 0]);
+        out.push("<line x1=\"" + (tx + (alongX ? -4.5 : 0)).toFixed(1) +
+          "\" y1=\"" + (ty + (alongX ? 0 : -4.5)).toFixed(1) +
+          "\" x2=\"" + (tx + (alongX ? 4.5 : 0)).toFixed(1) +
+          "\" y2=\"" + (ty + (alongX ? 0 : 4.5)).toFixed(1) +
+          "\" stroke=\"#dc2626\" stroke-width=\"1.4\"/>");
+      };
+      var dimLine = function (ax, ay, bx2, by2) {
+        out.push("<line x1=\"" + sx([ax, ay, 0]).toFixed(1) + "\" y1=\"" + sy([ax, ay, 0]).toFixed(1) +
+          "\" x2=\"" + sx([bx2, by2, 0]).toFixed(1) + "\" y2=\"" + sy([bx2, by2, 0]).toFixed(1) +
+          "\" stroke=\"#dc2626\" stroke-width=\"1.6\" stroke-dasharray=\"2 3\" stroke-linecap=\"round\"/>");
+      };
+      // A corner sitting on the given coordinate, for the extension lines.
+      var cornerAt = function (axis, v) {
+        for (var q2 = 0; q2 < 4; q2++) {
+          var val = axis === "x" ? state.corners[q2][0] : state.corners[q2][1];
+          if (Math.abs(val - v) < 0.5) { return state.corners[q2]; }
+        }
+        return null;
+      };
+
+      // Pack the rows: shortest dimension first (nearest the plot), and two
+      // spans may share a row when they do not touch along that axis.
+      var packRows = function (list, gap) {
+        var order = list.slice().sort(function (a, b) { return (a.hi - a.lo) - (b.hi - b.lo); });
+        var rows = [], i, r, j;
+        for (i = 0; i < order.length; i++) {
+          var sp = order[i], placed = false;
+          for (r = 0; r < rows.length && !placed; r++) {
+            var clash = false;
+            for (j = 0; j < rows[r].length; j++) {
+              var q = rows[r][j];
+              // Touching is fine; only a positive overlap along the axis clashes.
+              if (Math.min(q.hi, sp.hi) - Math.max(q.lo, sp.lo) > 0) { clash = true; break; }
+            }
+            if (!clash) { rows[r].push(sp); placed = true; }
+          }
+          if (!placed) { rows.push([sp]); }
+        }
+        return rows;
+      };
+      var bandSpan = Math.max(rg.b.maxx - rg.b.minx, rg.b.maxy - rg.b.miny, 900);
+      var rowsX = packRows(rowX, 0.03 * bandSpan);
+      var rowsY = packRows(rowY, 0.03 * bandSpan);
+
+      var ri, rk, row, yRow, xRow, pA2, pB2, span, q2b;
+      for (ri = 0; ri < rowsX.length; ri++) {
+        for (rk = 0; rk < rowsX[ri].length; rk++) {
+        row = rowsX[ri][rk];
+        yRow = yBase + ri * rg.step;
+        pA2 = cornerAt("x", row.lo);
+        pB2 = cornerAt("x", row.hi);
+        if (!pA2 || !pB2) { continue; }
+        extLine(pA2[0], pA2[1], pA2[0], yRow);
+        extLine(pB2[0], pB2[1], pB2[0], yRow);
+        dimLine(row.lo, yRow, row.hi, yRow);
+        tickAt(row.lo, yRow, true);
+        tickAt(row.hi, yRow, true);
+        span = row.hi - row.lo;
+        q2b = quantumLabel(span, fracOk);
+        out.push(textRot([(row.lo + row.hi) / 2, yRow, 0],
+          fmtCoord(span) + (q2b ? " or " + q2b : ""), "#334155", 0, 0, 10.5, -90));
+        }
+      }
+      for (ri = 0; ri < rowsY.length; ri++) {
+        for (rk = 0; rk < rowsY[ri].length; rk++) {
+        row = rowsY[ri][rk];
+        xRow = xBase + ri * rg.step;
+        pA2 = cornerAt("y", row.lo);
+        pB2 = cornerAt("y", row.hi);
+        if (!pA2 || !pB2) { continue; }
+        extLine(pA2[0], pA2[1], xRow, pA2[1]);
+        extLine(pB2[0], pB2[1], xRow, pB2[1]);
+        dimLine(xRow, row.lo, xRow, row.hi);
+        tickAt(xRow, row.lo, false);
+        tickAt(xRow, row.hi, false);
+        span = row.hi - row.lo;
+        q2b = quantumLabel(span, fracOk);
+        out.push(textRot([xRow, (row.lo + row.hi) / 2, 0],
+          fmtCoord(span) + (q2b ? " or " + q2b : ""), "#334155", 0, 0, 10.5, 0));
+        }
+      }
     }
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     if (state.autozoom) {
@@ -2027,7 +2644,19 @@ var API = {
     } else {
       svg.style.width = W + "px"; svg.style.height = H + "px"; svg.style.flex = "0 0 auto";
     }
-    svg.innerHTML = out.join("");
+    // Grid numbers and the compass words live outside the rotated group so their
+    // anchors stay put on screen; everything else rotates as one.
+    var gridTxt = (state.show.grid) ? (gridLabels() + compassLabelsSvg()) : "";
+    if (state.rot) {
+      // The whole drawing is one transform: rotate the map about the canvas
+      // centre, 90 deg CCW per click.  Model maths stay in world space; the
+      // text inside is counter-rotated so it never turns sideways.
+      svg.innerHTML = "<g transform=\"rotate(" + (-90 * state.rot) + " " +
+        (W / 2).toFixed(1) + " " + (H / 2).toFixed(1) + ")\">" +
+        uprightText(out.join(""), 90 * state.rot) + "</g>" + gridTxt;
+    } else {
+      svg.innerHTML = out.join("") + gridTxt;
+    }
     updateStatus(r);
   }
 
@@ -2147,8 +2776,12 @@ var API = {
         for (bi = 0; bi < r.plants.points.length; bi++) {
           dsum += Math.hypot(r.plants.points[bi][0] - scx, r.plants.points[bi][1] - scy);
         }
-        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"Average plant distance to the " +
-          "shed.\">Avg distance</span><span>" + fmt(dsum / r.plants.points.length, 0) + "</span></div>");
+        var atip = "Average plant distance to the shed." + (r.shedStandIn
+          ? " This plot has no bed records, so the engine spawns no shed; the " +
+            "reference point is house A (stand-in)."
+          : "");
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + atip +
+          "\">Avg distance</span><span>" + fmt(dsum / r.plants.points.length, 0) + "</span></div>");
       }
       if (r.plants.fallbackExtension) {
         rows.push(kv("plant surface", "the extension polygon itself (0 bed records, no inset)"));
@@ -2180,11 +2813,12 @@ var API = {
     rows.push(kv("plot area", areaCell(plotArea)));
     rows.push(kv("extension area", areaCell(extArea)));
 
-    // P0..P3 always listed (debug readout)
+    // P0..P3 always listed (debug readout).  Same 1-decimal values as ?c= in the
+    // URL, so the panel and the address bar cannot disagree.
     for (var ci = 0; ci < 4; ci++) {
       var cp = r.corners[ci];
       rows.push("<div class=\"kv\"><span>P" + ci + "</span><span>" +
-        fmt(cp[0]) + ", " + fmt(cp[1]) + "</span></div>");
+        fmtCoord(cp[0]) + ", " + fmtCoord(cp[1]) + "</span></div>");
     }
     for (var ei = 0; ei < 4; ei++) {
       var ea = r.corners[ei], eb = r.corners[(ei + 1) % 4];
@@ -2263,6 +2897,12 @@ var API = {
         cls = "err";
         rows.push("<div class=\"kv\"><span>beds</span><span>cut failed</span></div>");
         rows.push("<div class=\"kv\"><span>reason</span><span>" + r.beds.error + "</span></div>");
+        if (r.fit && r.fit.ok && r.shed) {
+          // updateSubfield breaks out of the type-8 case before the shed spawn,
+          // so the game has none; the page keeps a stand-in on house A.
+          rows.push(kv("shed mesh", "at house A " + fmt(r.shed.origin[0]) + ", " +
+            fmt(r.shed.origin[1]) + " (stand-in: no bed records)"));
+        }
         if (!banner.classList.contains("on")) {
           banner.textContent = "Beds failed: " + r.beds.error;
           banner.classList.add("on");
@@ -2293,8 +2933,10 @@ var API = {
   function updateCoords(r) {
     var out = [];
     if (r.aDecal) {
-      var a = centroid(B.rectOutline(r.aDecal.origin, r.aDecal.dir, 600, 350));
-      out.push(kv("House", fmt(a[0], 1) + ", " + fmt(a[1], 1)));
+      // The A decal is a 700x1200 plane centred on the transform origin.
+      // (A centroid over rectOutline would include its duplicated closing
+      // vertex and shift the number by 1/5 of the half-diagonal.)
+      out.push(kv("House", fmt(r.aDecal.origin[0], 1) + ", " + fmt(r.aDecal.origin[1], 1)));
     } else {
       out.push(kv("House", "none"));
     }
@@ -2316,6 +2958,16 @@ var API = {
   // ------------------------------------------------------------- interaction
   var drag = null;
 
+  // Inverse of the view rotation: the drawing is inside a rotated <g>, so a
+  // pointer in SVG units has to be un-rotated before mapping back to world.
+  function unrotatePoint(qx, qy) {
+    if (!state.rot) { return [qx, qy]; }
+    var cx = W / 2, cy = H / 2, dx = qx - cx, dy = qy - cy;
+    if (state.rot === 1) { return [cx - dy, cy + dx]; }
+    if (state.rot === 2) { return [cx - dx, cy - dy]; }
+    return [cx + dy, cy - dx];
+  }
+
   function svgPoint(evt) {
     // Client -> SVG user units.  The SVG is 900x868 with
     // preserveAspectRatio="xMidYMid meet", so the picture is letterboxed inside
@@ -2329,15 +2981,14 @@ var API = {
       var ctm = svg.getScreenCTM();
       if (ctm) {
         var q = pt.matrixTransform(ctm.inverse());
-        return [q.x, q.y];
+        return unrotatePoint(q.x, q.y);
       }
     }
     var rect = svg.getBoundingClientRect();
     var s = Math.min(rect.width / W, rect.height / H);
-    return [
+    return unrotatePoint(
       W / 2 + (evt.clientX - rect.left - rect.width / 2) / s,
-      H / 2 + (evt.clientY - rect.top - rect.height / 2) / s
-    ];
+      H / 2 + (evt.clientY - rect.top - rect.height / 2) / s);
   }
 
   var dragOffset = null;   // corner minus pointer, so the grab does not snap
@@ -2346,7 +2997,7 @@ var API = {
     var g = evt.target.closest ? evt.target.closest(".handle") : null;
     if (!g) { return; }
     var i = parseInt(g.getAttribute("data-i"), 10);
-    if (i === 0) { return; }            // P0 is pinned to the origin
+    if (i === 0 && state.lock0) { return; }   // P0 is pinned to the origin
     if (!state.manual) { return; }      // Plot Control owns the dimensions
     drag = i;
     var sp = svgPoint(evt);
@@ -2355,6 +3006,7 @@ var API = {
     dragOffset = [c0[0] - w[0], c0[1] - w[1]];
     g.classList.add("drag");
     try { svg.setPointerCapture(evt.pointerId); } catch (e) { /* synthetic pointer */ }
+    render();          // draw the drag aids immediately, not on the first move
     evt.preventDefault();
   });
 
@@ -2366,8 +3018,12 @@ var API = {
     // clicking its edge would otherwise snap the corner onto the cursor
     w = [w[0] + dragOffset[0], w[1] + dragOffset[1]];
     // no drag limits: the corner follows the pointer wherever it goes
-    if (drag === 1) { w[1] = 0; }       // P1 stays on y = 0 (the street line)
-    if (state.snap) {                   // 100-unit intervals on both axes
+    if (drag === 1 && state.lock1) { w[1] = 0; }   // P1 stays on y = 0 (the street line)
+    // Always land on whole units: the engine works in integer uu and a float
+    // corner only produces unreadable coordinates and a 4599.999 ruler leg.
+    w[0] = Math.round(w[0]);
+    w[1] = Math.round(w[1]);
+    if (state.snap) {                   // Snap to Grid coarsens that to 100
       w[0] = Math.round(w[0] / 100) * 100;
       w[1] = Math.round(w[1] / 100) * 100;
     }
@@ -2383,9 +3039,12 @@ var API = {
     dragOffset = null;
     try { svg.releasePointerCapture(evt.pointerId); } catch (e) {}
     // with the limits gone a corner can be dragged out of the window, so pull the
-    // view back to fit once the drag ends (the scale changes only on release)
+    // view back to fit once the drag ends (the scale changes only on release).
+    // With Fit view on this always re-fits; with it off it only rescues a plot
+    // that has left the frozen window.
     var b = bbox(state.corners);
-    if (b.minx < view.minx || b.maxx > view.maxx || b.miny < view.miny || b.maxy > view.maxy) {
+    if (state.fitView || b.minx < view.minx || b.maxx > view.maxx ||
+        b.miny < view.miny || b.maxy > view.maxy) {
       fitView();
     }
     render();   // also refreshes the Coordinates list (skipped while dragging)
@@ -2413,7 +3072,7 @@ var API = {
     var az = document.getElementById("autozoom");
     az.addEventListener("change", function () {
       state.autozoom = az.checked;
-      fitView();
+      autoFit();
       render();
     });
   })();
@@ -2423,12 +3082,12 @@ var API = {
     var mode = document.getElementById("mode");
     var preset = document.getElementById("preset");
     var box = document.getElementById("dims");
-    var manopt = document.getElementById("manopt");
-    var snap = document.getElementById("snap");
     var PRESETS = [
       { name: "4CP Square", c: [[0, 0, 0], [4600, 0, 0], [4600, -4600, 0], [0, -4600, 0]] },
       { name: "2CP Linear", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [0, -4600, 0]] },
-      { name: "Tacticat BFD", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] }
+      { name: "Tacticat BFD", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] },
+      { name: "7F Linear", c: [[0, 0, 0], [1200, 0, 0], [1200, -8400, 0], [0, -8400, 0]] },
+      { name: "6(H+S)", c: [[0, 0, 0], [1500, 0, 0], [1500, -6600, 0], [0, -6600, 0]] }
     ];
     var rw = document.getElementById("dim-w"), nw = document.getElementById("num-w");
     var rl = document.getElementById("dim-l"), nl = document.getElementById("num-l");
@@ -2543,19 +3202,20 @@ var API = {
         applyLength(l);
       }
       show();
-      fitView();
+      autoFit();
       render();
     }
     sq.addEventListener("change", function () {
       if (sq.checked && !applySquare(Math.max(MIN_FRONTAGE_SQ, edges().w))) { sq.checked = false; }
       show();
-      fitView();
+      autoFit();
       render();
     });
     mode.addEventListener("change", function () {
       state.manual = mode.value === "manual";
       box.style.display = state.manual ? "none" : "block";
-      manopt.style.display = state.manual ? "block" : "none";
+      syncSnap();    // snap and the ruler need a dragged handle
+      syncRuler();   // the ruler tool only exists in Manual Mode
       if (!state.manual) {
         // Edge Mode cannot represent a plot below its floors, so bring the
         // current shape up to them on entry.
@@ -2577,7 +3237,7 @@ var API = {
       // A preset is an exact shape; Make Square would distort it, so it steps aside.
       if (sq.checked) { sq.checked = false; rl.disabled = nl.disabled = false; }
       state.corners = p.c.map(function (q) { return q.slice(); });
-      fitView();
+      autoFit();
       if (!state.manual) { show(); }
       render();
     });
@@ -2596,8 +3256,32 @@ var API = {
       }
       preset.value = "-1";
     };
-    snap.addEventListener("change", function () {
-      state.snap = snap.checked;
+    // Snap to Grid is a square magnet toggle in Grid Control; snapping only
+    // happens while a handle is dragged, so like the ruler it is a Manual Mode
+    // tool and the reason it is disabled lives on the wrapper (a disabled
+    // button never gets a hover).
+    var snapBtn = document.getElementById("snap");
+    var snapTip = document.getElementById("snap-tip");
+    function syncSnap() {
+      snapBtn.setAttribute("aria-pressed", state.snap ? "true" : "false");
+      if (state.manual) {
+        snapTip.removeAttribute("title");
+        snapTip.style.cursor = "";
+        snapBtn.title = state.snap
+          ? "Snap to Grid on: corners land on 100-unit steps - click to snap to whole units instead"
+          : "Snap to Grid off: corners land on whole units (1 uu) - click for 100-unit steps";
+        snapBtn.setAttribute("aria-label", snapBtn.title);
+      } else {
+        snapBtn.title = "";
+        snapTip.title = "Snap to Grid - only available in Manual mode";
+        snapTip.style.cursor = "not-allowed";
+        snapBtn.setAttribute("aria-label", "Snap to Grid - only available in Manual mode");
+      }
+      snapBtn.disabled = !state.manual;
+    }
+    snapBtn.addEventListener("click", function () {
+      if (!state.manual) { return; }
+      state.snap = !state.snap;
       if (state.snap) {
         // pull any corner that is off the 100-unit lattice onto it
         for (var i = 1; i < 4; i++) {
@@ -2605,25 +3289,128 @@ var API = {
           state.corners[i] = [Math.round(c[0] / 100) * 100,
                               Math.round(c[1] / 100) * 100, c[2]];
         }
-        fitView();
+        autoFit();
       }
+      syncSnap();
       render();
     });
+    syncSnap();
+    var rulerBtn = document.getElementById("ruler");
+    var rulerTip = document.getElementById("ruler-tip");
+    function syncRuler() {
+      // Two states only: on (always) and off.
+      rulerBtn.setAttribute("aria-pressed", state.ruler ? "true" : "false");
+      // A disabled button gets no hover at all, so the "why" lives on the
+      // wrapper that still receives the pointer.
+      if (state.manual) {
+        rulerTip.removeAttribute("title");
+        rulerTip.style.cursor = "";
+        var rulerWhy = "shows every point pair's component distances in cm, converted to " +
+          "CP (Corpse Pit), F (Firewood Cutter), H (Hunting Camp) and S (Shrine) where possible";
+        rulerBtn.title = state.ruler
+          ? "Ruler on: " + rulerWhy + " - click to hide it"
+          : "Ruler off: " + rulerWhy + " - click to show it";
+        rulerBtn.setAttribute("aria-label", rulerBtn.title);
+      } else {
+        rulerBtn.title = "";
+        rulerTip.title = "Ruler - only available in Manual mode";
+        rulerTip.style.cursor = "not-allowed";
+        rulerBtn.setAttribute("aria-label", "Ruler - only available in Manual mode");
+      }
+      rulerBtn.disabled = !state.manual;
+    }
+    rulerBtn.addEventListener("click", function () {
+      if (!state.manual) { return; }
+      state.ruler = !state.ruler;
+      syncRuler();
+      render();
+    });
+    syncRuler();
     rw.addEventListener("input", function () { commit("w", +rw.value); });
     rl.addEventListener("input", function () { commit("l", +rl.value); });
     nw.addEventListener("change", function () { commit("w", +nw.value || 0); });
     nl.addEventListener("change", function () { commit("l", +nl.value || 0); });
   })();
 
-  document.getElementById("fit").addEventListener("click", function () {
-    fitView();
+  // Fit view is a mode, not a one-shot: pressed means the view keeps re-fitting
+  // to the plot after every change.  Clicking it off freezes the current bounds.
+  var fitBtn = document.getElementById("fit");
+  function syncFit() {
+    fitBtn.setAttribute("aria-pressed", state.fitView ? "true" : "false");
+    fitBtn.title = state.fitView
+      ? "Fit view is on: the map re-fits to the plot after every change - click to freeze the view"
+      : "Fit view is off: the view stays where it is - click to fit and keep fitting";
+    fitBtn.setAttribute("aria-label", fitBtn.title);
+  }
+  fitBtn.addEventListener("click", function () {
+    state.fitView = !state.fitView;
+    if (state.fitView) { fitView(); }
+    syncFit();
     render();
   });
+  syncFit();
   document.getElementById("reset").addEventListener("click", function () {
     state.corners = START.map(function (p) { return p.slice(); });
-    fitView();
+    autoFit();
     render();
   });
+  document.getElementById("rotate").addEventListener("click", function () {
+    state.rot = (state.rot + 1) % 4;   // 90 deg counter-clockwise per click
+    autoFit();
+    render();
+  });
+
+  // The canvas is sized from the stage, so a resize has to re-derive it.
+  // Debounced with a timer rather than requestAnimationFrame: rAF is paused in
+  // a background tab, which would leave the canvas stale.
+  var resizeTimer = 0;
+  function onResize() {
+    if (resizeTimer) { clearTimeout(resizeTimer); }
+    resizeTimer = setTimeout(function () {
+      resizeTimer = 0;
+      autoFit();
+      render();
+    }, 60);
+  }
+  window.addEventListener("resize", onResize);
+  if (window.ResizeObserver && stageEl) {
+    new ResizeObserver(onResize).observe(stageEl);
+  }
+
+  // ------------------------------------------------------------- point locks
+  // Each toggle enforces (or releases) one point's default restriction.
+  // Locking re-imposes it, so the point snaps back onto its rail instead of
+  // being "locked" somewhere off it.
+  var LOCKS = [
+    { id: "lock-p0", key: "lock0",
+      lockedTip: "P0 locked at the origin (0,0) - click to release it",
+      freeTip: "P0 released, free corner - click to lock it back to the origin (0,0)",
+      onLock: function () { state.corners[0] = [0, 0, 0]; } },
+    { id: "lock-p1", key: "lock1",
+      lockedTip: "P1 locked to the EW axis, slides along it - click to release it",
+      freeTip: "P1 released, free corner - click to lock it back to the EW axis",
+      onLock: function () { state.corners[1] = [state.corners[1][0], 0, 0]; } }
+  ];
+
+  function syncLocks() {
+    LOCKS.forEach(function (L) {
+      var el = document.getElementById(L.id);
+      var locked = !!state[L.key];
+      el.setAttribute("aria-pressed", locked ? "true" : "false");
+      el.title = locked ? L.lockedTip : L.freeTip;
+      el.setAttribute("aria-label", el.title);
+    });
+  }
+
+  LOCKS.forEach(function (L) {
+    document.getElementById(L.id).addEventListener("click", function () {
+      state[L.key] = !state[L.key];
+      if (state[L.key]) { L.onLock(); }
+      syncLocks();
+      render();
+    });
+  });
+  syncLocks();
 
   // copy the Model readout
   var copyBtn = document.getElementById("copy-model");

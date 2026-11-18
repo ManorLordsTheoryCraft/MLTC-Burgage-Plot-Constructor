@@ -128,7 +128,7 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
 <body>
 <header>
   <h1>ManorLordsTheoryCraft Burgage Plot Constructor</h1>
-  <p>ManorLordsTheoryCraft 17 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
+  <p>ManorLordsTheoryCraft 18 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
 </header>
 <div class="wrap">
   <div class="stage-col">
@@ -1530,6 +1530,47 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
              arc: SHED_ARC, half: half };
   }
 
+  // `FUN_144b59950`'s backyard gate: a 400x400 box must fit inside the
+  // extension.  After the facade slice the builder extracts the extension's
+  // C1->P2 side and runs the fitter with halves 200/200, start 200, step 30,
+  // 60 candidates, obstacle = the extension polygon itself.  No candidate ->
+  // the element's extensionTransform stays at the constructor default
+  // (identity, translation 0), which FUN_144b7b2c0 counts as "no room for
+  // extension" and FUN_144b66870 refuses to build a decal for.
+  var EXT_GATE_START = 200.0, EXT_GATE_HALF = 200.0,
+      EXT_GATE_STEP = 30.0, EXT_GATE_ITERS = 60;
+  function extensionClearance(profile, quad, opts) {
+    var o = opts || {};
+    var start = o.start === undefined ? EXT_GATE_START : o.start;
+    var half = o.half === undefined ? EXT_GATE_HALF : o.half;
+    var step = o.step === undefined ? EXT_GATE_STEP : o.step;
+    var iters = o.iters === undefined ? EXT_GATE_ITERS : o.iters;
+    var ring = (profile && profile.length > 3) ? profile.slice() : (quad || []).slice();
+    if (ring.length < 4 || !quad || quad.length < 3) {
+      return { ok: false, reason: "no extension polygon", tried: 0 };
+    }
+    var p0 = ring[0], pn = ring[ring.length - 1];
+    var dx0 = pn[0] - p0[0], dy0 = pn[1] - p0[1];
+    if (dx0 * dx0 + dy0 * dy0 > 1e-9) { ring.push([p0[0], p0[1], 0]); }
+    var sg = sideGeometry(ring, quad[1], quad[2], []);
+    if (!sg) {
+      return { ok: false, reason: "C1->P2 side extraction failed", tried: 0, sideLen: 0 };
+    }
+    var tried = 0;
+    for (var k = 0; k < iters; k++) {
+      var s = start + step * k;
+      if (s > sg.len - half) { break; }
+      var pd = sg.arc(s);
+      if (!pd) { break; }
+      tried++;
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], half, half, [ring]);
+      if (res && res.ok) {
+        return { ok: true, arc: s, slide: res.slide, c0: res.c0, tried: tried };
+      }
+    }
+    return { ok: false, reason: "no 400x400 clear box", tried: tried, sideLen: sg.len };
+  }
+
   // Stand-in shed for a 0-bed extension.  The engine spawns NOTHING there --
   // updateSubfield breaks out of the type-8 case right after cut 1, before the
   // shed -- but the page keeps a reference point so the Plan panel and the
@@ -1563,7 +1604,7 @@ var API = {
     boxHits: boxHits, sideGeometry: sideGeometry, slideUntilClear: slideUntilClear,
     pointInPoly: pointInPoly, isSimpleQuad: isSimpleQuad, winding: winding,
     buildExtensionForPlot: buildExtensionForPlot, generateExtension: generateExtension,
-    shedMesh: shedMesh, shedAt: shedAt,
+    shedMesh: shedMesh, shedAt: shedAt, extensionClearance: extensionClearance,
     fitHouses: fitHouses, fitSecondary: fitSecondary, previewA: previewA, previewSecondary: previewSecondary, buildBeds: buildBeds, plantGrid: plantGrid,
     shrubStats: shrubStats, edgeCount: edgeCount
   };
@@ -2063,6 +2104,20 @@ var API = {
               trace: (fit && fit.trace) || null };
     } else if (fit && fit.ok && !houses.houseShape) {
       fit = { ok: false, reason: "no house fit - no backyard", trace: fit.trace };
+    }
+    // FUN_144b59950's own backyard gate, applied after the facade slice: a
+    // 400x400 box must clear inside the extension polygon, walked along its
+    // C1->P2 side from arc 200 (step 30, 60 candidates, one 20 slide allowed).
+    // If nothing clears the engine leaves the element's extensionTransform at
+    // the default (translation 0): no backyard decal, and the plot tool counts
+    // it as "no room for extension".
+    var extGate = null;
+    if (fit && fit.ok) {
+      extGate = B.extensionClearance(fit.profile, fit.quad);
+      if (!extGate.ok) {
+        fit = { ok: false, reason: "Plot too small for backyard extension.",
+                trace: fit.trace, gate: extGate };
+      }
     }
     var beds = null, plants = null, plantsAt = null, shed = null, shedStandIn = false;
     if (fit.ok) {
@@ -2666,6 +2721,7 @@ var API = {
   // to someone using the page, so map them onto Plot Control terms.
   function extFailKind(reason) {
     var r = String(reason || "");
+    if (/too small for backyard/i.test(r)) { return "tooSmall"; }
     if (/border crossing/i.test(r)) { return "tooLong"; }
     if (/A dropped|no house fit|A fit|no candidate|side extraction/i.test(r)) { return "noRoom"; }
     if (/degenerate/i.test(r)) { return "collapsed"; }
@@ -2674,6 +2730,7 @@ var API = {
   }
   function extFailShort(reason) {
     switch (extFailKind(reason)) {
+      case "tooSmall": return "Plot too small for backyard extension.";
       case "tooLong": return "Frontage too long for the cut line";
       case "noRoom": return "no room for house + backyard";
       case "collapsed": return "a side has collapsed";
@@ -2683,6 +2740,8 @@ var API = {
   }
   function extFailText(reason) {
     switch (extFailKind(reason)) {
+      case "tooSmall":
+        return "Plot too small for backyard extension.";
       case "tooLong":
         return "the plot is too wide for the game's backyard cut \u2014 the facade line only " +
           "reaches 10,000 u (100 m) out from the house. Shorten the Frontage, or move a " +
@@ -2744,12 +2803,13 @@ var API = {
     if (r.plants) {
       rows.push(sec("Plants"));
       rows.push(kv("N plants", r.plants.count));
-      // Plant Density = N / extension area, in the same unit the area cells use.
-      if (r.plants && extArea !== null) {
+      // Plant Density = N / PLOT area (the whole burgage plot, not just the
+      // backyard), in the same unit the area cells use.
+      if (r.plants && plotArea !== null) {
         var du = AREA_UNITS[areaUnit];
-        var dv = r.plants.count / (extArea / du.div);
+        var dv = r.plants.count / (plotArea / du.div);
         var dtxt = (du.id === "uu") ? dv.toExponential(2) : dv.toFixed(2);
-        var dtip = "Plant Density is N plants divided by the extension area, expressed per " +
+        var dtip = "Plant Density is N plants divided by the plot area, expressed per " +
                    "the selected area unit. The unit follows the plot area and extension " +
                    "area selector (" + du.name + ").";
         rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + dtip + "\">Plant Density</span>" +
@@ -2782,9 +2842,6 @@ var API = {
           : "");
         rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + atip +
           "\">Avg distance</span><span>" + fmt(dsum / r.plants.points.length, 0) + "</span></div>");
-      }
-      if (r.plants.fallbackExtension) {
-        rows.push(kv("plant surface", "the extension polygon itself (0 bed records, no inset)"));
       }
     }
 
@@ -2853,7 +2910,10 @@ var API = {
         banner.textContent = "This plot's corners cross each other (a bow-tie shape). " +
           "Move a corner until the outline no longer crosses itself.";
       } else {
-        banner.textContent = "No backyard extension: " + extFailText(r.fit.reason);
+        var failText = extFailText(r.fit.reason);
+        banner.textContent = (extFailKind(r.fit.reason) === "tooSmall")
+          ? failText
+          : "No backyard extension: " + failText;
       }
       banner.classList.add("on");
     } else {

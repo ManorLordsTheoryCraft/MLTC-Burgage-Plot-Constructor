@@ -60,6 +60,8 @@ input[type=range]{width:100%;accent-color:var(--quad)}
 button{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:pointer;
   border:1px solid var(--line);background:#fff;color:var(--ink)}
 button:hover{background:#f1f3f6}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:disabled:hover{background:#fff}
 .btns{display:flex;gap:8px}
 .btns button{flex:1}
 /* Toggle button: filled while the mode is on, so the pressed state is visible
@@ -117,6 +119,10 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
 .banner{display:none;margin:0;padding:9px 12px;border-radius:10px;
   background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12.5px}
 .banner.on{display:block}
+/* A "special condition", not an error: 0 bed records (the engine's own state).
+   Green, so it does not read as a failure. */
+.banner.note{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.kv.note span:last-child{color:#15803d;font-weight:600}
 .handle{cursor:grab}
 .handle.locked{cursor:default}
 .handle.drag{cursor:grabbing}
@@ -128,7 +134,7 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
 <body>
 <header>
   <h1>ManorLordsTheoryCraft Burgage Plot Constructor</h1>
-  <p>ManorLordsTheoryCraft 18 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
+  <p>ManorLordsTheoryCraft 21 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
 </header>
 <div class="wrap">
   <div class="stage-col">
@@ -171,6 +177,7 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
           <option value="2">Tacticat BFD</option>
           <option value="3">7F Linear</option>
           <option value="4">6(H+S)</option>
+          <option value="5">Triangle Solution 840</option>
           <option value="-1">Custom</option>
         </select></div>
       <div class="row"><label>Locks</label>
@@ -201,7 +208,11 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
           <input type="range" id="dim-l" min="100" max="20000" step="100">
           <input type="number" id="num-l" min="100" max="20000" step="100"></div>
       </div>
-      <div class="btns" style="margin-top:8px"><button id="reset">Reset shape</button></div>
+      <div class="btns" style="margin-top:8px">
+        <button id="undo" disabled>Undo</button>
+        <button id="redo" disabled>Redo</button>
+      </div>
+      <div class="btns" style="margin-top:6px"><button id="reset">Reset shape</button></div>
     </div>
     <div class="card">
       <h2>Grid Control</h2>
@@ -1622,6 +1633,19 @@ var API = {
   var FRAME_B64 = "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ACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUs87AGvWrFm5cmVgYCACgAAAwIvleQeA7gB+AQEICgoKDw+Pjo5GAABABmwiPacAJCQkREdHh4eH/wKWgBAAAJAKAvCvAHh5eQUGBoaFhXUTgObm5mcMwHfffccCwBrAf9ZoAAD0On4i0fTnA/Ddd989YwCam5sbGxv37NmjGoCYmJiwsLAXfQlIbQCKi4uFAJw6depHB0BogPhHAQDQs/jp/+MC0NbWphqA4uLiX1gAaBO4JwOABgBAL+JnUfcBePz48VdffdVVAE6dOnX06NGDBw92FYDw8PCAgABPT09nZ+cXNwABAQHdBODgwYNCAG7evHn//v0fFAA0AABeBMIgUg3A999/300Abt68yQegubn5lxoAGxsbFgB+E3jTpk3FxcVlZWVdBYDdAXz66adffPHFV1999fjx42+++ebbb7/97rvvvv/+ez4AXd0EEPEPBwDg+RCnj4JdodL0Z3cA33777TfffPP48WNaAvr0008fPnyoegfAB6CsrIz2ANLS0oQA9OgS0BtvvPHmm2+yAGhoaKgNAH8H0FUA6uvr1S4B3b1796OPPuoqAP/1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";
   var B = BedsModel;
 
+  // Snap to Grid coarsens a dragged corner onto this step; without it a corner
+  // only rounds to whole units (1 uu).
+  var SNAP_STEP = 50;
+  // Set inside the Plot Control block (where syncSnap lives) so the undo/redo
+  // code, which sits outside it, can refresh both flag widgets.
+  var syncUiFlags = null;
+  // Likewise for the mode UI (dropdown + Edge Mode box), so an undo can switch
+  // Manual/Edge back when the stored state was taken in the other mode.
+  var applyModeUi = null;
+  // And for Make Square: it both reshapes the plot and changes the rule the
+  // Edge sliders follow, so its tick belongs to the state as well.
+  var squareFlagGet = null, squareFlagSet = null;
+
   var state = {
     corners: START.map(function (p) { return p.slice(); }),
     frac: 0.5,
@@ -2766,6 +2790,18 @@ var API = {
   function updateStatus(r) {
     var el = document.getElementById("status");
     var banner = document.getElementById("banner");
+    // One place that shows/hides the banner, so the green "note" styling can
+    // never leak from the 0-bed case into a real error (and vice versa).
+    function showBanner(text, kind) {
+      banner.textContent = text;
+      if (kind === "note") { banner.classList.add("note"); }
+      else { banner.classList.remove("note"); }
+      banner.classList.add("on");
+    }
+    function hideBanner() {
+      banner.classList.remove("on");
+      banner.classList.remove("note");
+    }
     var rows = [];
     var cls = "";
     var sec = function (t) { return "<div class=\"sec\">" + t + "</div>"; };
@@ -2808,7 +2844,7 @@ var API = {
       if (r.plants && plotArea !== null) {
         var du = AREA_UNITS[areaUnit];
         var dv = r.plants.count / (plotArea / du.div);
-        var dtxt = (du.id === "uu") ? dv.toExponential(2) : dv.toFixed(2);
+        var dtxt = (du.id === "uu") ? dv.toExponential(2) : String(Math.round(dv));
         var dtip = "Plant Density is N plants divided by the plot area, expressed per " +
                    "the selected area unit. The unit follows the plot area and extension " +
                    "area selector (" + du.name + ").";
@@ -2825,6 +2861,12 @@ var API = {
                   "map (x,y) (" + pct(nlo) + "%," + pct(nhi) + "%).";
         rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + tip + "\">N Range</span>" +
                   "<span title=\"" + tip + "\">" + nlo + " to " + nhi + "</span></div>");
+      } else if (r.plants && r.plants.count) {
+        // No bed records -> the raster is frac-independent, so there is no range.
+        var etip = "No bed records: the plant raster does not depend on frac, so the " +
+                   "count is exact.";
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + etip + "\">N Range</span>" +
+                  "<span title=\"" + etip + "\">Exact</span></div>");
       }
       if (r.plants.count && r.shed && r.shed.box && r.shed.box.length) {
         var scx = 0, scy = 0, bi;
@@ -2845,6 +2887,53 @@ var API = {
       }
     }
 
+    // ------------------------------------------------------------- costs
+    // GetExtensionAreaCostMultiplier / GetRegionalWealthCostForUpgrade:
+    // max(1.0, floor(area / 3,500,000 * 10 + 0.5) / 10).  It heads the Costs
+    // section now (it used to be the first Plot row) and also scales seeds.
+    var extCost = function (a) {
+      if (a === null || a === undefined) { return null; }
+      return Math.max(1.0, Math.floor(a / EXT_COST_BASE * 10 + 0.5) / 10);
+    };
+    var extMod = extCost(extArea);
+    rows.push(sec("Costs"));
+    rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" +
+      "Regional wealth cost of the upgrade is multiplied by this: +10% per 350,000 uu of " +
+      "extension area above 3,675,000 uu (base 3,500,000 uu = DefaultExtensionLength 3500 " +
+      "x DefaultExtensionWidth 1000). Clamped at 1.0, so smaller extensions get no " +
+      "discount.\">Ext Cost Modifier</span><span>" +
+      (extMod === null ? "\u2014" : "+" + Math.round((extMod - 1) * 100) + "%") + "</span></div>");
+    // Seed Cost: base prices 20 / 32 / 48, each with the current additive
+    // percentage modifiers folded in -- the Ext Cost Modifier is that sum
+    // (+X% = 1 + X/100), so the price is base * extMod, rounded to a whole
+    // regional-wealth point.  Each value carries the crop name as its tooltip
+    // and the dotted underline the area cells use, so the hover is discoverable.
+    var SEEDS = [[20, "Beetroots", "#7c3aed"], [32, "Carrots", "#ea580c"],
+                 [48, "Cabbages", "#15803d"]];
+    var seedHtml = SEEDS.map(function (s) {
+      var v = (extMod === null) ? "\u2014" : String(Math.round(s[0] * extMod));
+      return "<span class=\"hint\" title=\"" + s[1] + "\" style=\"color:" + s[2] + "\">" + v + "</span>";
+    }).join(", ");
+    rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" +
+      "Seed prices in regional wealth: Beetroots 20, Carrots 32, Cabbages 48, each with the " +
+      "additive percentage modifiers folded in (the Ext Cost Modifier).\">Seed Cost (RW)</span><span>" +
+      seedHtml + "</span></div>");
+    // Plants per RW: one ratio per crop — N plants divided by that crop's seed
+    // price in regional wealth (the rounded prices shown in the row above).
+    if (extMod !== null && r.plants && r.plants.count) {
+      var prHtml = SEEDS.map(function (s) {
+        var price = Math.round(s[0] * extMod);
+        var v = (price > 0) ? (r.plants.count / price).toFixed(2) : "\u2014";
+        return "<span class=\"hint\" title=\"" + s[1] +
+          " - N plants per point of regional wealth spent on this seed\" style=\"color:" +
+          s[2] + "\">" + v + "</span>";
+      }).join(", ");
+      var prTip = "N plants divided by each crop's seed price in regional wealth " +
+        "(Beetroots, Carrots, Cabbages - left to right).";
+      rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + prTip +
+        "\">Plants per RW</span><span>" + prHtml + "</span></div>");
+    }
+
     rows.push(sec("Plot"));
 
     // extArea was computed above (the Plants density uses it).
@@ -2854,19 +2943,6 @@ var API = {
       var u = AREA_UNITS[areaUnit];
       return "<span class=\"unitpick\" title=\"" + u.tip + "\">" + u.text(a) + "</span>";
     };
-    // GetExtensionAreaCostMultiplier / GetRegionalWealthCostForUpgrade:
-    // max(1.0, floor(area / 3,500,000 * 10 + 0.5) / 10).
-    var extCost = function (a) {
-      if (a === null || a === undefined) { return null; }
-      return Math.max(1.0, Math.floor(a / EXT_COST_BASE * 10 + 0.5) / 10);
-    };
-    var extMod = extCost(extArea);
-    rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" +
-      "Regional wealth cost of the upgrade is multiplied by this: +10% per 350,000 uu of " +
-      "extension area above 3,675,000 uu (base 3,500,000 uu = DefaultExtensionLength 3500 " +
-      "x DefaultExtensionWidth 1000). Clamped at 1.0, so smaller extensions get no " +
-      "discount.\">Ext Cost Modifier</span><span>" +
-      (extMod === null ? "\u2014" : "+" + Math.round((extMod - 1) * 100) + "%") + "</span></div>");
     rows.push(kv("plot area", areaCell(plotArea)));
     rows.push(kv("extension area", areaCell(extArea)));
 
@@ -2885,11 +2961,10 @@ var API = {
 
     if (r.wind >= 0) {
       cls = "err";
-      banner.textContent = "P0\u2013P3 are running the wrong way round. The engine only ever " +
+      showBanner("P0\u2013P3 are running the wrong way round. The engine only ever " +
         "stores plots with a negative signed area \u2014 in UE5 (left-handed, map Y " +
         "increasing downward) that reads counter-clockwise on screen. Drag a corner back " +
-        "across the plot until the order matches.";
-      banner.classList.add("on");
+        "across the plot until the order matches.");
       el.className = cls;
       el.innerHTML = rows.join("");
       return;
@@ -2907,17 +2982,16 @@ var API = {
       rows.push(kv("backyard", "none on this plot shape"));
       rows.push(kv("why", extFailShort(r.fit.reason)));
       if (r.geomOk === false) {
-        banner.textContent = "This plot's corners cross each other (a bow-tie shape). " +
-          "Move a corner until the outline no longer crosses itself.";
+        showBanner("This plot's corners cross each other (a bow-tie shape). " +
+          "Move a corner until the outline no longer crosses itself.");
       } else {
         var failText = extFailText(r.fit.reason);
-        banner.textContent = (extFailKind(r.fit.reason) === "tooSmall")
+        showBanner((extFailKind(r.fit.reason) === "tooSmall")
           ? failText
-          : "No backyard extension: " + failText;
+          : "No backyard extension: " + failText);
       }
-      banner.classList.add("on");
     } else {
-      banner.classList.remove("on");
+      hideBanner();
       var P0 = r.corners[0], P1 = r.corners[1], Q0 = r.fit.quad[0], Q1 = r.fit.quad[1];
       var fx = P1[0] - P0[0], fy = P1[1] - P0[1];
       var fl = Math.sqrt(fx * fx + fy * fy);
@@ -2954,19 +3028,20 @@ var API = {
           : "none"));
         rows.push(kv("offset", fmt(r.beds.offset[0]) + ", " + fmt(r.beds.offset[1])));
       } else {
-        cls = "err";
-        rows.push("<div class=\"kv\"><span>beds</span><span>cut failed</span></div>");
-        rows.push("<div class=\"kv\"><span>reason</span><span>" + r.beds.error + "</span></div>");
+        // The engine's own 0-bed state, not a failure: updateSubfield breaks out
+        // of the type-8 case right after cut 1, and the plants then rasterise
+        // the whole extension.  Rendered green ("note"), never red.
+        cls = "";
+        rows.push("<div class=\"kv note\"><span>beds</span><span>No shed or planter " +
+          "beds generated. Plants fill the whole extension.</span></div>");
         if (r.fit && r.fit.ok && r.shed) {
           // updateSubfield breaks out of the type-8 case before the shed spawn,
           // so the game has none; the page keeps a stand-in on house A.
           rows.push(kv("shed mesh", "at house A " + fmt(r.shed.origin[0]) + ", " +
             fmt(r.shed.origin[1]) + " (stand-in: no bed records)"));
         }
-        if (!banner.classList.contains("on")) {
-          banner.textContent = "Beds failed: " + r.beds.error;
-          banner.classList.add("on");
-        }
+        showBanner("No shed or planter beds generated. Plants fill the whole extension.",
+                   "note");
       }
     }
     setLayer("st-zones", !!(r.beds && r.beds.ok) || !!(r.beds && r.beds.shed),
@@ -3060,6 +3135,7 @@ var API = {
     if (i === 0 && state.lock0) { return; }   // P0 is pinned to the origin
     if (!state.manual) { return; }      // Plot Control owns the dimensions
     drag = i;
+    histDrag = histSnap();              // restore point for undo (pointerup)
     var sp = svgPoint(evt);
     var w = toWorld(sp[0], sp[1]);
     var c0 = state.corners[i];
@@ -3083,9 +3159,9 @@ var API = {
     // corner only produces unreadable coordinates and a 4599.999 ruler leg.
     w[0] = Math.round(w[0]);
     w[1] = Math.round(w[1]);
-    if (state.snap) {                   // Snap to Grid coarsens that to 100
-      w[0] = Math.round(w[0] / 100) * 100;
-      w[1] = Math.round(w[1] / 100) * 100;
+    if (state.snap) {                   // Snap to Grid coarsens that to 50
+      w[0] = Math.round(w[0] / SNAP_STEP) * SNAP_STEP;
+      w[1] = Math.round(w[1] / SNAP_STEP) * SNAP_STEP;
     }
     var c = state.corners[drag];
     state.corners[drag] = [w[0], w[1], c[2] === undefined ? 0 : c[2]];
@@ -3097,6 +3173,7 @@ var API = {
     if (drag === null) { return; }
     drag = null;
     dragOffset = null;
+    if (histDrag) { histPush(histDrag); histDrag = null; }
     try { svg.releasePointerCapture(evt.pointerId); } catch (e) {}
     // with the limits gone a corner can be dragged out of the window, so pull the
     // view back to fit once the drag ends (the scale changes only on release).
@@ -3147,7 +3224,8 @@ var API = {
       { name: "2CP Linear", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [0, -4600, 0]] },
       { name: "Tacticat BFD", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] },
       { name: "7F Linear", c: [[0, 0, 0], [1200, 0, 0], [1200, -8400, 0], [0, -8400, 0]] },
-      { name: "6(H+S)", c: [[0, 0, 0], [1500, 0, 0], [1500, -6600, 0], [0, -6600, 0]] }
+      { name: "6(H+S)", c: [[0, 0, 0], [1500, 0, 0], [1500, -6600, 0], [0, -6600, 0]] },
+      { name: "Triangle Solution 840", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [-2500, 0, 0]] }
     ];
     var rw = document.getElementById("dim-w"), nw = document.getElementById("num-w");
     var rl = document.getElementById("dim-l"), nl = document.getElementById("num-l");
@@ -3233,18 +3311,30 @@ var API = {
     // and P2 = P3 + (P1 - P0), so all four sides are equal and right-angled.
     // This is the checkbox's own operation; the Length slider keeps its delta
     // rule and is disabled while the box is ticked.
+    // Make Square: keep the street edge P0->P1 and grow the square on the side
+    // the plot already occupies.  That side comes from the polygon's WINDING,
+    // not from where P3 happens to sit: a corner lying on the street line (the
+    // Triangle Solution 840 has P3 on y = 0) makes a P3-side test degenerate
+    // (dot == 0), which used to build the square on the wrong side and flip the
+    // outline clockwise — a winding the engine never produces.
+    // A positive winding is preserved rather than repaired: a reversed outline
+    // is the user's input, and the banner should keep saying so.
     function applySquare(side) {
       var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
       var u1 = B.unit2(p1[0] - p0[0], p1[1] - p0[1]);
       if (!u1[0] && !u1[1]) { return false; }
-      var n = [-u1[1], u1[0]];                       // rot90 of the street edge
-      var cur = B.unit2(p3[0] - p0[0], p3[1] - p0[1]);
-      if (cur[0] * n[0] + cur[1] * n[1] < 0) { n = [u1[1], -u1[0]]; }
+      var want = (B.winding(c) > 0) ? 1 : -1;        // < 0 = the engine's order
+      var n = (want < 0) ? [u1[1], -u1[0]] : [-u1[1], u1[0]];
       var keep = snapshot();
       c[1] = [p0[0] + side * u1[0], p0[1] + side * u1[1], p1[2]];
       c[3] = [p0[0] + side * n[0], p0[1] + side * n[1], p3[2]];
       c[2] = [c[3][0] + (c[1][0] - p0[0]), c[3][1] + (c[1][1] - p0[1]), p2[2]];
-      if (!validQuad(c)) { state.corners = keep; return false; }
+      // Never emit a shape the model would reject: if the square came out with
+      // the other winding, treat it as a refusal (the corners are restored).
+      if (!validQuad(c) || ((B.winding(c) > 0) ? 1 : -1) !== want) {
+        state.corners = keep;
+        return false;
+      }
       return true;
     }
     function commit(which, val) {
@@ -3266,12 +3356,16 @@ var API = {
       render();
     }
     sq.addEventListener("change", function () {
+      var keep = histSnap();         // Make Square reshapes the plot
+      keep.square = !sq.checked;     // 'change' fires AFTER the tick flips
       if (sq.checked && !applySquare(Math.max(MIN_FRONTAGE_SQ, edges().w))) { sq.checked = false; }
       show();
       autoFit();
       render();
+      histPush(keep);
     });
     mode.addEventListener("change", function () {
+      var keep = histSnap();         // entering Edge Mode can lift the shape to the floors
       state.manual = mode.value === "manual";
       box.style.display = state.manual ? "none" : "block";
       syncSnap();    // snap and the ruler need a dragged handle
@@ -3290,16 +3384,19 @@ var API = {
         show();
       }
       render();
+      histPush(keep);
     });
     preset.addEventListener("change", function () {
       var p = PRESETS[+preset.value];
       if (!p) { return; }                 // "Custom" is display-only
+      var keep = histSnap();
       // A preset is an exact shape; Make Square would distort it, so it steps aside.
       if (sq.checked) { sq.checked = false; rl.disabled = nl.disabled = false; }
       state.corners = p.c.map(function (q) { return q.slice(); });
       autoFit();
       if (!state.manual) { show(); }
       render();
+      histPush(keep);
     });
     // Keep the preset name honest: any corner that no longer matches a preset
     // switches the dropdown to Custom.
@@ -3328,8 +3425,8 @@ var API = {
         snapTip.removeAttribute("title");
         snapTip.style.cursor = "";
         snapBtn.title = state.snap
-          ? "Snap to Grid on: corners land on 100-unit steps - click to snap to whole units instead"
-          : "Snap to Grid off: corners land on whole units (1 uu) - click for 100-unit steps";
+          ? "Snap to Grid on: corners land on 50-unit steps - click to snap to whole units instead"
+          : "Snap to Grid off: corners land on whole units (1 uu) - click for 50-unit steps";
         snapBtn.setAttribute("aria-label", snapBtn.title);
       } else {
         snapBtn.title = "";
@@ -3341,18 +3438,20 @@ var API = {
     }
     snapBtn.addEventListener("click", function () {
       if (!state.manual) { return; }
+      var keep = histSnap();          // switching on can pull corners onto the lattice
       state.snap = !state.snap;
       if (state.snap) {
-        // pull any corner that is off the 100-unit lattice onto it
+        // pull any corner that is off the 50-unit lattice onto it
         for (var i = 1; i < 4; i++) {
           var c = state.corners[i];
-          state.corners[i] = [Math.round(c[0] / 100) * 100,
-                              Math.round(c[1] / 100) * 100, c[2]];
+          state.corners[i] = [Math.round(c[0] / SNAP_STEP) * SNAP_STEP,
+                              Math.round(c[1] / SNAP_STEP) * SNAP_STEP, c[2]];
         }
         autoFit();
       }
       syncSnap();
       render();
+      histPush(keep);
     });
     syncSnap();
     var rulerBtn = document.getElementById("ruler");
@@ -3386,10 +3485,32 @@ var API = {
       render();
     });
     syncRuler();
-    rw.addEventListener("input", function () { commit("w", +rw.value); });
-    rl.addEventListener("input", function () { commit("l", +rl.value); });
-    nw.addEventListener("change", function () { commit("w", +nw.value || 0); });
-    nl.addEventListener("change", function () { commit("l", +nl.value || 0); });
+    // Edge Mode controls: one history entry per gesture (grab ... release).
+    function edgeBegin() { if (!histEdge) { histEdge = histSnap(); } }
+    function edgeEnd() { if (histEdge) { histPush(histEdge); histEdge = null; } }
+    rw.addEventListener("pointerdown", edgeBegin);
+    rl.addEventListener("pointerdown", edgeBegin);
+    rw.addEventListener("input", function () { edgeBegin(); commit("w", +rw.value); });
+    rl.addEventListener("input", function () { edgeBegin(); commit("l", +rl.value); });
+    rw.addEventListener("change", edgeEnd);
+    rl.addEventListener("change", edgeEnd);
+    nw.addEventListener("change", function () { edgeBegin(); commit("w", +nw.value || 0); edgeEnd(); });
+    nl.addEventListener("change", function () { edgeBegin(); commit("l", +nl.value || 0); edgeEnd(); });
+    // Hand the flag refresh out to the undo/redo block (syncSnap is scoped here).
+    syncUiFlags = function () { syncSnap(); syncLocks(); };
+    // ... and the mode UI, so undo/redo can put Manual/Edge back as it was.
+    applyModeUi = function () {
+      mode.value = state.manual ? "manual" : "edge";
+      box.style.display = state.manual ? "none" : "block";
+      syncRuler();
+      if (!state.manual) { show(); }
+    };
+    // Make Square's tick, read/written by the history code.
+    squareFlagGet = function () { return !!sq.checked; };
+    squareFlagSet = function (v) {
+      sq.checked = !!v;
+      show();          // re-syncs the readouts and the disabled Length controls
+    };
   })();
 
   // Fit view is a mode, not a one-shot: pressed means the view keeps re-fitting
@@ -3410,9 +3531,17 @@ var API = {
   });
   syncFit();
   document.getElementById("reset").addEventListener("click", function () {
+    var ok = true;
+    try {
+      ok = window.confirm("Reset the plot to the default 4CP square?\n\n" +
+        "Undo brings the current shape back.");
+    } catch (e) { ok = true; }         // confirm blocked: behave as before
+    if (!ok) { return; }
+    var keep = histSnap();
     state.corners = START.map(function (p) { return p.slice(); });
     autoFit();
     render();
+    histPush(keep);
   });
   document.getElementById("rotate").addEventListener("click", function () {
     state.rot = (state.rot + 1) % 4;   // 90 deg counter-clockwise per click
@@ -3464,12 +3593,129 @@ var API = {
 
   LOCKS.forEach(function (L) {
     document.getElementById(L.id).addEventListener("click", function () {
+      var keep = histSnap();         // re-locking can move the point onto its rail
       state[L.key] = !state[L.key];
       if (state[L.key]) { L.onLock(); }
       syncLocks();
       render();
+      histPush(keep);
     });
   });
+
+  // ------------------------------------------------------------ undo / redo
+  // A history entry is PLOT STATE ONLY: the four corners plus the two flags
+  // that decide where a corner is allowed to land (Snap to Grid, P0/P1 locks).
+  // Up to HIST_MAX entries each way.  Restoring never moves a stored point: a
+  // flag that would "correct" a coordinate is switched off for that state --
+  // e.g. corners stored off the 50-unit lattice come back with Snap off, and a
+  // P1 at y != 0 releases the axis lock, so the coordinates land untouched.
+  var HIST_MAX = 10;
+  var histUndo = [], histRedo = [];
+  var histDrag = null;   // snapshot taken at pointerdown
+  var histEdge = null;   // snapshot taken when an Edge Mode control is grabbed
+
+  function histSnap() {
+    return {
+      corners: state.corners.map(function (q) { return q.slice(); }),
+      snap: !!state.snap,
+      lock0: !!state.lock0,
+      lock1: !!state.lock1,
+      manual: !!state.manual,
+      square: squareFlagGet ? squareFlagGet() : false
+    };
+  }
+  // A state change is a corner MOVE.  Toggling Snap or a lock without moving a
+  // point is not a state change, so it is not recorded: the flags travel with
+  // the position change whose snapshot they were captured next to.
+  function histSameCorners(a, b) {
+    if (!a || !b) { return false; }
+    for (var i = 0; i < 4; i++) {
+      if (a.corners[i][0] !== b.corners[i][0] || a.corners[i][1] !== b.corners[i][1]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function histPush(keep) {
+    if (!keep || histSameCorners(keep, histSnap())) { return; }
+    histUndo.push(keep);
+    if (histUndo.length > HIST_MAX) { histUndo.shift(); }
+    histRedo.length = 0;             // a new edit drops the redo branch
+    syncHist();
+  }
+  function histApply(s) {
+    state.corners = s.corners.map(function (q) {
+      return [q[0], q[1], q[2] === undefined ? 0 : q[2]];
+    });
+    // Flags follow the restored POSITION.
+    //   * A lock is a pin: it re-engages whenever its point is back on the rail
+    //     (locking a point that is already there moves nothing) and is released
+    //     when the point sits off it.  Undoing a move of P0 therefore puts it
+    //     back at the origin AND locked again.
+    //   * Snap is a drag mode rather than a pin, so it is only forced OFF, never
+    //     on: restoring off-lattice corners must never be "corrected" by it.
+    state.snap = s.snap;
+    for (var i = 0; i < 4; i++) {
+      var c = state.corners[i];
+      if (c[0] % SNAP_STEP !== 0 || c[1] % SNAP_STEP !== 0) { state.snap = false; }
+    }
+    state.lock0 = (state.corners[0][0] === 0 && state.corners[0][1] === 0);
+    state.lock1 = (state.corners[1][1] === 0);
+    // The mode is part of the state: restoring a step taken in Edge Mode has to
+    // switch back to Edge Mode (and vice versa), or the two views would disagree
+    // about the same corners.
+    if (s.manual !== undefined) { state.manual = !!s.manual; }
+    if (squareFlagSet) { squareFlagSet(s.square); }
+    if (applyModeUi) { applyModeUi(); }
+    if (syncUiFlags) { syncUiFlags(); }
+    autoFit();
+    render();
+  }
+  function histUndoOne() {
+    if (!histUndo.length) { return; }
+    histRedo.push(histSnap());
+    if (histRedo.length > HIST_MAX) { histRedo.shift(); }
+    histApply(histUndo.pop());
+    syncHist();
+  }
+  function histRedoOne() {
+    if (!histRedo.length) { return; }
+    histUndo.push(histSnap());
+    if (histUndo.length > HIST_MAX) { histUndo.shift(); }
+    histApply(histRedo.pop());
+    syncHist();
+  }
+  function syncHist() {
+    var u = document.getElementById("undo"), r = document.getElementById("redo");
+    u.disabled = histUndo.length === 0;
+    r.disabled = histRedo.length === 0;
+    // The label carries the depth of its own stack, e.g. "Undo (3)".
+    u.textContent = histUndo.length ? "Undo (" + histUndo.length + ")" : "Undo";
+    r.textContent = histRedo.length ? "Redo (" + histRedo.length + ")" : "Redo";
+    u.title = histUndo.length
+      ? "Undo the last plot change (" + histUndo.length + " of " + HIST_MAX + " stored)"
+      : "Nothing to undo";
+    r.title = histRedo.length
+      ? "Redo the next plot change (" + histRedo.length + " of " + HIST_MAX + " stored)"
+      : "Nothing to redo";
+    u.setAttribute("aria-label", u.title);
+    r.setAttribute("aria-label", r.title);
+  }
+  document.getElementById("undo").addEventListener("click", histUndoOne);
+  document.getElementById("redo").addEventListener("click", histRedoOne);
+  // Ctrl/Cmd+Z / Ctrl+Shift+Z (and Ctrl+Y) while the page has focus.
+  document.addEventListener("keydown", function (evt) {
+    if (!(evt.ctrlKey || evt.metaKey)) { return; }
+    var k = (evt.key || "").toLowerCase();
+    if (k === "z") {
+      evt.preventDefault();
+      if (evt.shiftKey) { histRedoOne(); } else { histUndoOne(); }
+    } else if (k === "y") {
+      evt.preventDefault();
+      histRedoOne();
+    }
+  });
+  syncHist();
   syncLocks();
 
   // copy the Model readout

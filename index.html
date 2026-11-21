@@ -177,8 +177,10 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
           <option value="2">Tacticat BFD</option>
           <option value="3">7F Linear</option>
           <option value="4">6(H+S)</option>
-          <option value="5">Triangle Solution 840</option>
-          <option value="-1">Custom</option>
+          <option value="5">Triangle Solution 4F/2CP (+140%)</option>
+          <option value="6">Triangle Solution 5H (+250%)</option>
+          <option value="7">Triangle Solution 2.5CP (+290%)</option>
+          <option value="-1">N/A</option>
         </select></div>
       <div class="row"><label>Locks</label>
         <div class="btns">
@@ -3225,7 +3227,9 @@ var API = {
       { name: "Tacticat BFD", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] },
       { name: "7F Linear", c: [[0, 0, 0], [1200, 0, 0], [1200, -8400, 0], [0, -8400, 0]] },
       { name: "6(H+S)", c: [[0, 0, 0], [1500, 0, 0], [1500, -6600, 0], [0, -6600, 0]] },
-      { name: "Triangle Solution 840", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [-2500, 0, 0]] }
+      { name: "Triangle Solution 4F/2CP (+140%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [-2500, 0, 0]] },
+      { name: "Triangle Solution 5H (+250%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -5500, 0], [-3200, 0, 0]] },
+      { name: "Triangle Solution 2.5CP (+290%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -5750, 0], [-3450, 0, 0]] }
     ];
     var rw = document.getElementById("dim-w"), nw = document.getElementById("num-w");
     var rl = document.getElementById("dim-l"), nl = document.getElementById("num-l");
@@ -3388,7 +3392,7 @@ var API = {
     });
     preset.addEventListener("change", function () {
       var p = PRESETS[+preset.value];
-      if (!p) { return; }                 // "Custom" is display-only
+      if (!p) { return; }                 // "N/A" is display-only
       var keep = histSnap();
       // A preset is an exact shape; Make Square would distort it, so it steps aside.
       if (sq.checked) { sq.checked = false; rl.disabled = nl.disabled = false; }
@@ -3399,7 +3403,7 @@ var API = {
       histPush(keep);
     });
     // Keep the preset name honest: any corner that no longer matches a preset
-    // switches the dropdown to Custom.
+    // switches the dropdown to N/A.
     syncPreset = function () {
       var c = state.corners;
       for (var i = 0; i < PRESETS.length; i++) {

@@ -172,11 +172,11 @@ select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
         </select></div>
       <div class="row"><label>Presets</label>
         <select id="preset">
-          <option value="0" selected>4CP Square</option>
-          <option value="1">2CP Linear</option>
-          <option value="2">Tacticat BFD</option>
-          <option value="3">7F Linear</option>
-          <option value="4">6(H+S)</option>
+          <option value="0" selected>Square 4CP (+290%)</option>
+          <option value="1">Linear 2CP (+90%)</option>
+          <option value="2">Tacticat BFD (+400%)</option>
+          <option value="3">Linear 1F/7F (+130%)</option>
+          <option value="4">Linear (H+S)/6H (+110%)</option>
           <option value="5">Triangle Solution 4F/2CP (+140%)</option>
           <option value="6">Triangle Solution 5H (+250%)</option>
           <option value="7">Triangle Solution 2.5CP (+290%)</option>
@@ -3237,11 +3237,11 @@ var API = {
     var preset = document.getElementById("preset");
     var box = document.getElementById("dims");
     var PRESETS = [
-      { name: "4CP Square", c: [[0, 0, 0], [4600, 0, 0], [4600, -4600, 0], [0, -4600, 0]] },
-      { name: "2CP Linear", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [0, -4600, 0]] },
-      { name: "Tacticat BFD", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] },
-      { name: "7F Linear", c: [[0, 0, 0], [1200, 0, 0], [1200, -8400, 0], [0, -8400, 0]] },
-      { name: "6(H+S)", c: [[0, 0, 0], [1500, 0, 0], [1500, -6600, 0], [0, -6600, 0]] },
+      { name: "Square 4CP (+290%)", c: [[0, 0, 0], [4600, 0, 0], [4600, -4600, 0], [0, -4600, 0]] },
+      { name: "Linear 2CP (+90%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [0, -4600, 0]] },
+      { name: "Tacticat BFD (+400%)", c: [[0, 0, 0], [6900, 0, 0], [4600, -4600, 0], [2300, -4600, 0]] },
+      { name: "Linear 1F/7F (+130%)", c: [[0, 0, 0], [1200, 0, 0], [1200, -8400, 0], [0, -8400, 0]] },
+      { name: "Linear (H+S)/6H (+110%)", c: [[0, 0, 0], [1500, 0, 0], [1500, -6600, 0], [0, -6600, 0]] },
       { name: "Triangle Solution 4F/2CP (+140%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -4600, 0], [-2500, 0, 0]] },
       { name: "Triangle Solution 5H (+250%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -5500, 0], [-3200, 0, 0]] },
       { name: "Triangle Solution 2.5CP (+290%)", c: [[0, 0, 0], [2300, 0, 0], [2300, -5750, 0], [-3450, 0, 0]] }

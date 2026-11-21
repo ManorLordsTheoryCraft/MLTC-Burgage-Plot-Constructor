@@ -2194,36 +2194,32 @@ var API = {
   }
 
   // --------------------------------------------------------------- quanta
-  // Shorthand for the ruler: the same length as a whole (or half) of a named
-  // plot quantum.  Integer forms win over halves, and the list is ordered
-  // largest-first so ties go to the bigger quantum (2300 reads "1.0 CP", never
-  // "2.1 HC").  Returns null when nothing divides the length, in which case the
-  // ruler prints the plain number.  One decimal is always shown: "2.0 CP".
+  // Shorthand for the ruler: the length of a whole multiple of a named plot
+  // quantum, or of two of them added.  The list is ordered largest-first so ties
+  // go to the bigger quantum (2300 reads "1CP", never "2.1HC").  Returns null
+  // when nothing divides the length, in which case the ruler prints the plain
+  // number.  A half CP is a name of its own — see halfCpLabel.
   var QUANTA = [[2300, "CP"], [1200, "F"], [1100, "H"], [400, "S"]];
   var FRAC_MIN = 800;      // fractions only at or above this length
-  var MAX_COEF = 12;       // largest coefficient a fraction's inner sum may carry
+  var MAX_COEF = 12;       // largest coefficient any form may carry
 
-  // Every term m x Q with m a multiple of 0.5 (integer multiples always, x.5 only
-  // when halves are allowed).  Cost is the coefficient rounded up, so 0.5 and 1.5
-  // cost 1 and 2 labour points.
-  function quantTerms(v, allowHalf) {
+  // Every term m x Q with m a whole multiple.  Cost is the coefficient: how many
+  // of that building the length measures.
+  function quantTerms(v) {
     var list = [], i, k;
     for (i = 0; i < QUANTA.length; i++) {
       var Q = QUANTA[i][0], name = QUANTA[i][1];
-      var kMax = Math.min(MAX_COEF * 2, Math.floor(2 * (v + 1e-6) / Q));
+      var kMax = Math.min(MAX_COEF, Math.floor((v + 1e-6) / Q));
       for (k = 1; k <= kMax; k++) {
-        if ((k % 2) && !allowHalf) { continue; }      // odd k = an x.5 coefficient
-        var coef = k / 2;
-        list.push({ val: coef * Q, cost: Math.ceil(coef), coef: coef,
-                    text: (coef % 1 === 0 ? String(coef) : coef.toFixed(1)) + name });
+        list.push({ val: k * Q, cost: k, coef: k, text: k + name });
       }
     }
     return list;
   }
 
   // Cheapest way to write v as one term or as the sum of two.
-  function bestForm(v, allowHalf) {
-    var list = quantTerms(v, allowHalf), i, j;
+  function bestForm(v) {
+    var list = quantTerms(v), i, j;
     var single = null, best = null;
     for (i = 0; i < list.length; i++) {
       if (Math.abs(list[i].val - v) > 1e-6) { continue; }
@@ -2253,8 +2249,24 @@ var API = {
 
   // Pass 1 - whole quanta only, up to two terms.
   function cleanLabel(v) {
-    var f = bestForm(v, false);
+    var f = bestForm(v);
     return f ? f.text : null;
+  }
+
+  // Pass 1.5 - half a corpse pit is a name of its own: 1150 = 0.5CP,
+  // 3450 = 1.5CP, 5750 = 2.5CP, 8050 = 3.5CP ...  The CP is the page's base
+  // unit, so the odd half-multiples of it are worth naming (the triangle preset
+  // legs are 5750 and 3450).  Even multiples are whole CP and pass 1 already
+  // owns them, and halves of F/H/S are NOT named: 1400 would then read "3.5S"
+  // instead of the "1/2 of 2F1S" it gets today.  No right-angle gate - this is
+  // a length identity, not a fraction of a combination, so it holds on a wedge
+  // too (which is why the triangle presets can print it).
+  function halfCpLabel(v) {
+    var k = v / (QUANTA[0][0] / 2);        // measured in half-CP units
+    var m = Math.round(k);
+    if (m < 1 || m > 2 * MAX_COEF || (m % 2) === 0) { return null; }
+    if (Math.abs(k - m) > 1e-6) { return null; }
+    return (m / 2).toFixed(1) + QUANTA[0][1];
   }
 
   // Pass 2 - the fraction covers the WHOLE combination: "1/2 of (2 CP)",
@@ -2263,7 +2275,7 @@ var API = {
   function fracLabel(v) {
     var best = null, n, inner, cand;
     for (n = 2; n <= 4; n++) {
-      inner = bestForm(v * n, false);
+      inner = bestForm(v * n);
       if (!inner || inner.maxCoef > MAX_COEF) { continue; }
       cand = { n: n, text: "1/" + n + " of " + inner.text, terms: inner.terms };
       var fits = !best || cand.terms < best.terms ||
@@ -2278,9 +2290,12 @@ var API = {
     if (!(v > 0)) { return null; }
     // Least labour first, and a clean form (whole quanta) always wins: the inner
     // combination of a fraction still has to be built, so a fraction is only used
-    // when no clean form exists at all.
+    // when no clean form exists at all.  The half-CP identity ranks between the
+    // two: it is exact and needs no build, so it beats any fraction.
     var clean = cleanLabel(v);
     if (clean) { return clean; }
+    var half = halfCpLabel(v);
+    if (half) { return half; }
     if (!allowFrac || v < FRAC_MIN - 1e-6) { return null; }
     return fracLabel(v);
   }

@@ -1,0 +1,4256 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ManorLordsTheoryCraft Burgage Plot Constructor</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --line:#dfe3e8; --ink:#1f2933; --muted:#66717f;
+  --plot:#64748b; --quad:#ea580c; --house:#8fa3b8; --housefill:#e8eef5;
+  --sec:#5f9ea0; --secfill:#e6f4f1;
+  --clear:#be185d;
+  --b1:#dc2626; --b2:#16a34a; --b3:#2563eb; --shed:#ca8a04; --dbg:#9333ea; --plant:#000000;
+  --grid:#e9edf2; --grid10:#dde3ea; --axis:#c2cbd6;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+header{padding:16px 22px 10px}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.01em}
+header p{margin:4px 0 0;color:var(--muted);font-size:12.5px;max-width:82ch}
+header p a{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+header p a:hover{color:#0f766e}
+.wrap{display:flex;gap:14px;padding:0 22px 22px;align-items:flex-start}
+.stage-col{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage{flex:1 1 auto;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:6px;height:calc(min(74vh,720px) * 1.4);display:flex;
+  position:relative;overflow:auto}
+svg{width:100%;height:100%;display:block;touch-action:none;user-select:none}
+aside{flex:0 0 342px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card.model{height:auto;display:flex;flex-direction:column}
+.card.model #status{flex:0 0 auto;min-height:0;overflow:visible}
+.card h2{margin:0 0 8px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.copy{margin-left:2px;display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:0;background:transparent;color:var(--muted);
+  border-radius:6px;cursor:pointer}
+.copy:hover{background:#eef2f6;color:var(--ink)}
+.copy svg{display:block}
+.copy.done{color:#0f766e}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 0}
+.row label{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;
+  user-select:none;color:var(--ink)}
+input[type=checkbox]{width:15px;height:15px;accent-color:#475569;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--quad)}
+.kv{display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;
+  border-bottom:1px dashed #eef1f4}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{font-variant-numeric:tabular-nums}
+#status .sec{margin:8px 0 2px;padding-bottom:2px;font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:#475569;font-weight:600;border-bottom:1px solid #e2e8f0}
+#status .sec:first-child{margin-top:0}
+.sw{display:inline-block;width:13px;height:3px;border-radius:2px;margin-right:7px;
+  vertical-align:middle}
+.sw.b{height:9px;border-radius:2px;width:15px}
+.ly-state{font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;letter-spacing:.02em}
+.ly-state.on{color:#0f766e}
+.ly-state.off{color:#b91c1c}
+button{font:inherit;font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink)}
+button:hover{background:#f1f3f6}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:disabled:hover{background:#fff}
+.btns{display:flex;gap:8px}
+.btns button{flex:1}
+/* Toggle button: filled while the mode is on, so the pressed state is visible
+   without reading the tooltip. */
+.btns button.toggle[aria-pressed="true"]{background:#1e293b;border-color:#1e293b;color:#fff}
+.btns button.toggle[aria-pressed="true"]:hover{background:#0f172a;border-color:#0f172a}
+.btns button.toggle[aria-pressed="false"]{color:#66717f}
+/* Square icon button: one glyph, no text, fixed 1:1 footprint.  Listed as
+   `.btns button.sqbtn` so it wins over the `.btns button{flex:1}` stretch rule. */
+.btns button.sqbtn{flex:0 0 auto;width:34px;height:34px;padding:0;display:inline-flex;
+  align-items:center;justify-content:center;font-size:17px;line-height:1}
+/* The rotate button carries the word ROT, so it needs the small caps size of
+   the lock buttons rather than the 17px glyph size. */
+.btns button.rotbtn{font-size:10.5px;font-weight:600;letter-spacing:.02em}
+/* Icon-only toggles (Snap, Ruler): each glyph is an inline SVG in currentColor,
+   so it inverts with the pressed fill.  They sit in wrappers so the disabled
+   state can still carry a hover tooltip - a disabled button never gets one. */
+.btns .tipwrap{display:inline-flex;flex:0 0 auto}
+.iconbtn svg{width:18px;height:18px;display:block}
+.btns button.iconbtn[aria-pressed="true"] svg{stroke-width:1.3}
+.btns button:disabled{opacity:.45;cursor:not-allowed}
+/* Point lock toggles: the point name over a small padlock.  Locked = filled
+   dark + closed shackle; unlocked = outlined with a dashed border + open
+   shackle, so the two states differ in fill, border and glyph at once. */
+.btns button.lockbtn{flex:0 0 auto;width:34px;height:34px;padding:0;gap:1px;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center}
+.lockbtn .lb{font-size:10.5px;line-height:1;letter-spacing:.02em}
+.lockbtn .lk{width:11px;height:11px;display:block}
+.lockbtn .lk .closed,.lockbtn .lk .open{fill:none;stroke:currentColor;
+  stroke-width:1.35;stroke-linecap:round}
+.lockbtn .lk rect{fill:currentColor}
+.lockbtn .lk .open{display:none}
+.lockbtn[aria-pressed="true"]{background:#1e293b;border-color:#1e293b;color:#fff}
+.lockbtn[aria-pressed="true"]:hover{background:#0f172a;border-color:#0f172a}
+.lockbtn[aria-pressed="false"]{border-style:dashed;color:#64748b}
+.lockbtn[aria-pressed="false"] .lk .closed{display:none}
+.lockbtn[aria-pressed="false"] .lk .open{display:inline}
+/* Tri-state tool toggle (Ruler): off / while-dragging (half-lit) / always. */
+.btns button.toggle[aria-pressed="mixed"]{background:#94a3b8;border-color:#94a3b8;color:#fff}
+.btns button.toggle[aria-pressed="mixed"]:hover{background:#7c8b9e;border-color:#7c8b9e}
+.dimrow{display:grid;grid-template-columns:52px 1fr 66px;gap:8px;align-items:center;
+  margin-top:8px;font-size:12.5px;color:var(--muted)}
+.dimrow input[type=number]{width:100%;padding:2px 5px;border:1px solid var(--line);
+  border-radius:6px;font:inherit;color:var(--ink);background:#fff}
+/* House.X seed: a read-only what-if for the engine's frac.  Its label is styled
+   like the Mode/Presets labels (.row label) rather than the muted .dimrow span. */
+.seedrow{grid-template-columns:84px 1fr auto;margin-top:5px}
+.seedrow > span:first-child{font-size:13px;color:var(--ink);cursor:help}
+.seedrow > .seedval{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;
+  text-align:right;min-width:54px}
+.seedrow > .seedna{grid-column:2 / 4;font-size:12px;color:var(--muted)}
+.hint{cursor:help;text-decoration:underline dotted #b6c0cc;text-underline-offset:2px}
+.unitpick{cursor:pointer;border-bottom:1px dotted #b6c0cc;user-select:none}
+.unitpick:hover{color:#0f172a;border-bottom-color:#0f172a}
+input:disabled{opacity:.4;cursor:not-allowed}
+input:disabled + *{opacity:.6}
+select{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--line);
+  border-radius:6px;background:#fff;color:var(--ink)}
+#status{font-size:12.5px;line-height:1.45}
+#status.err{color:#b91c1c}
+#coords{font-size:12.5px;line-height:1.45;max-height:min(42vh,420px);overflow-y:auto}
+.banner{display:none;margin:0;padding:9px 12px;border-radius:10px;
+  background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12.5px}
+.banner.on{display:block}
+/* A "special condition", not an error: 0 bed records (the engine's own state).
+   Green, so it does not read as a failure. */
+.banner.note{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+/* Preset-file problems (rejected rows, bad header, unreadable file, a name whose
+   "(+NN%)" disagrees with the shape).  Red, and multi-line. */
+.banner.warn{background:#fef2f2;border-color:#fecaca;color:#b91c1c;white-space:pre-line}
+.kv.note span:last-child{color:#15803d;font-weight:600}
+.handle{cursor:grab}
+.handle.locked{cursor:default}
+.handle.drag{cursor:grabbing}
+.hlabel{font-size:11.5px;font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:3.5px}
+.glabel{font-size:10px;fill:#93a0ae;font-family:"Segoe UI",system-ui,sans-serif}
+.plabel{font-size:7px;fill:var(--plant);font-family:"Segoe UI",system-ui,sans-serif;
+  font-weight:600;paint-order:stroke;stroke:#fff;stroke-width:1.6px;stroke-opacity:.75}
+</style></head>
+<body>
+<header>
+  <h1>ManorLordsTheoryCraft Burgage Plot Constructor</h1>
+  <p>ManorLordsTheoryCraft 23 Nov 2026. <a href="https://github.com/ManorLordsTheoryCraft/MLTC-Burgage-Plot-Constructor">Github</a> link.</p>
+</header>
+<div class="wrap">
+  <div class="stage-col">
+    <div class="stage">
+      <svg id="svg" viewBox="0 0 900 868" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="banner" id="banner"></div>
+    <div class="banner warn" id="presetwarn"></div>
+  </div>
+  <aside>
+    <div class="card">
+      <h2>Layers</h2>
+      <div class="row"><label><input type="checkbox" id="ly-grid" checked>
+        <i class="sw" style="background:var(--grid10)"></i>Grid (500)</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-zones">
+        <i class="sw b" style="background:var(--b1)"></i>Backyard Zones</label>
+        <span class="ly-state" id="st-zones">&mdash;</span></div>
+      <div class="row"><label><input type="checkbox" id="ly-plants" checked>
+        <i class="sw" style="background:var(--plant)"></i>Plants (100 grid)</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-plabels">
+        <i class="sw" style="background:var(--plant)"></i>Plant Labels</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-buildings" checked>
+        <i class="sw b" style="background:var(--housefill)"></i>Buildings</label>
+        <span class="ly-state" id="st-buildings">&mdash;</span></div>
+      <div class="row"><label><input type="checkbox" id="ly-labels">
+        <i class="sw" style="background:var(--quad)"></i>Labels</label></div>
+      <div class="row"><label><input type="checkbox" id="ly-dbg">
+        <i class="sw" style="background:var(--dbg)"></i>Fit internals (Q/A0)</label></div>
+    </div>
+    <div class="card">
+      <h2>Plot Control</h2>
+      <div class="row"><label>Mode</label>
+        <select id="mode">
+          <option value="manual" selected>Manual Mode</option>
+          <option value="edge">Edge Mode</option>
+        </select></div>
+      <div class="row"><label>Presets</label>
+        <!-- Options are built at runtime from plotPresets.ini (N/A is the only
+             hardcoded entry, always first).  See loadPresets(). -->
+        <select id="preset">
+          <option value="-1">N/A</option>
+        </select></div>
+      <div class="dimrow seedrow" title="Depending on House A's global X coordinate, its decimal component is used as a pseudorandom seed used in the planter bed cutting algorithm which directly affects the plant capacity of the backyard. You can play with this value to see the full range of variation in plant capacity for any given plot shape and the full range is shown under the Model&gt;Plants&gt;N Range.  But note that there is no reasonable way for you to influence this in the actual game due to this involving position variations much smaller than a blade of grass on the global map. This app uses the median seed value which will produce N plants with the least probability of error compared to what you will see in game for this plot."><span class="hint">House.X Seed</span>
+        <input type="range" id="hxseed" min="0" max="1" step="0.001" value="0.5">
+        <span class="seedval" id="hxval">0.5</span>
+        <span class="seedna" id="hxna" style="display:none">N/A for plots with no beds.</span></div>
+      <div class="row"><label>Locks</label>
+        <div class="btns">
+          <button id="lock-p0" class="sqbtn lockbtn" aria-pressed="true">
+            <span class="lb">P0</span>
+            <svg class="lk" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path class="closed" d="M3.6 5.4V3.9a2.4 2.4 0 0 1 4.8 0v1.5"/>
+              <path class="open" d="M8.4 5.4V3.9a2.4 2.4 0 0 0-4.4-1"/>
+              <rect x="2.2" y="5.4" width="7.6" height="5.3" rx="1.2"/>
+            </svg>
+          </button>
+          <button id="lock-p1" class="sqbtn lockbtn" aria-pressed="true">
+            <span class="lb">P1</span>
+            <svg class="lk" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path class="closed" d="M3.6 5.4V3.9a2.4 2.4 0 0 1 4.8 0v1.5"/>
+              <path class="open" d="M8.4 5.4V3.9a2.4 2.4 0 0 0-4.4-1"/>
+              <rect x="2.2" y="5.4" width="7.6" height="5.3" rx="1.2"/>
+            </svg>
+          </button>
+        </div></div>
+      <div id="dims" style="display:none">
+        <div class="row"><label><input type="checkbox" id="square"> Make Square</label></div>
+        <div class="dimrow"><span>Frontage</span>
+          <input type="range" id="dim-w" min="100" max="20000" step="100">
+          <input type="number" id="num-w" min="100" max="20000" step="100"></div>
+        <div class="dimrow"><span>Length</span>
+          <input type="range" id="dim-l" min="100" max="20000" step="100">
+          <input type="number" id="num-l" min="100" max="20000" step="100"></div>
+      </div>
+      <div class="btns" style="margin-top:8px">
+        <button id="undo" disabled>Undo</button>
+        <button id="redo" disabled>Redo</button>
+      </div>
+      <div class="btns" style="margin-top:6px"><button id="reset" title="Puts the plot and every control (layers, mode, snap, ruler, locks, Make Square, rotation, autozoom, fit view, area unit) back to their factory defaults - undoable with one Ctrl+Z">Reset to Defaults</button></div>
+    </div>
+    <div class="card">
+      <h2>Grid Control</h2>
+      <div class="btns">
+        <button id="rotate" class="sqbtn rotbtn" title="Rotate the map 90 degrees counter-clockwise"
+          aria-label="Rotate the map 90 degrees counter-clockwise">ROT</button>
+        <span class="tipwrap" id="snap-tip"><button id="snap" class="sqbtn toggle iconbtn" aria-pressed="true">
+          <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <path d="M3.2 2.6v4a2.8 2.8 0 0 0 5.6 0v-4" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M2.2 2.6h1.9M7.9 2.6h1.9" fill="none" stroke="currentColor"
+               stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button></span>
+        <span class="tipwrap" id="ruler-tip"><button id="ruler" class="sqbtn toggle iconbtn" aria-pressed="false">
+          <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <g transform="rotate(-45 6 6)" fill="none" stroke="currentColor"
+               stroke-width="1.15" stroke-linecap="round">
+              <rect x="1.3" y="4.5" width="9.4" height="3" rx="0.7"/>
+              <path d="M3.3 4.5v1.2M5.1 4.5v1.7M6.9 4.5v1.2M8.7 4.5v1.7"/>
+            </g>
+          </svg>
+        </button></span>
+      </div>
+    </div>
+    <div class="card model">
+      <h2>Model<button id="copy-model" class="copy" title="Copy model parameters"
+        aria-label="Copy model parameters"><svg width="14" height="14" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect>
+        <path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button><button id="copy-url" class="copy"
+        title="Export: copy a link to this plot" aria-label="Export: copy a link to this plot"><svg
+        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path>
+        <path d="M20 4l-9 9"></path>
+        <path d="M19 14v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"></path></svg></button></h2>
+      <div id="status"></div>
+    </div>
+    <div class="card">
+      <h2>Coordinates</h2>
+      <div id="coords"></div>
+    </div>
+    <div class="card">
+      <h2>View</h2>
+      <div class="btns">
+        <button id="fit" class="toggle" aria-pressed="true">Fit view</button>
+      </div>
+      <div class="row" style="margin-top:8px"><label><input type="checkbox" id="autozoom" checked>
+        Autozoom</label></div>
+    </div>
+  </aside>
+</div>
+<script>
+ 
+(function (root) {
+  "use strict";
+
+  var TOL2 = 10.0;          
+  var SPACING = 400.0;      
+
+  
+  function V(x, y, z) { return [x, y, z === undefined ? 0 : z]; }
+  function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function mul(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function mid(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]; }
+  function dist2xy(a, b) {
+    var dx = a[0] - b[0], dy = a[1] - b[1];
+    return dx * dx + dy * dy;
+  }
+  function lerpPt(a, b, f) {
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+  }
+  function unit2(x, y) {
+    var l = Math.sqrt(x * x + y * y);
+    if (l < 1e-12) { return [0, 0]; }
+    return [x / l, y / l];
+  }
+
+  
+  
+  
+  
+  var SEG_EPS = 1e-9;
+
+  function segSeg(p1, p2, p3, p4) {
+    var dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+    var ay = p1[1] - p3[1];
+    var den = (p4[1] - p3[1]) * dx - (p4[0] - p3[0]) * dy;
+    if (den === 0.0) { return null; }
+    var inv = 1.0 / den;
+    var t = (ay * (p4[0] - p3[0]) - (p1[0] - p3[0]) * (p4[1] - p3[1])) * inv;
+    var u = (ay * dx - (p1[0] - p3[0]) * dy) * inv;
+    if (t < -SEG_EPS || t > 1.0 + SEG_EPS || u < -SEG_EPS || u > 1.0 + SEG_EPS) { return null; }
+    t = Math.max(0.0, Math.min(1.0, t));
+    return [dx * t + p1[0], dy * t + p1[1], (p2[2] - p1[2]) * t + p1[2]];
+  }
+
+  
+  function sideCrosses(side, seg) {
+    for (var i = 0; i < side.length - 1; i++) {
+      if (segSeg(side[i], side[i + 1], seg[0], seg[1]) !== null) { return true; }
+    }
+    return false;
+  }
+
+  
+  function trimSide(side, seg, trimEnd, notes) {
+    var n = side.length, out, i, h;
+    if (trimEnd) {
+      out = [side[0]];
+      for (i = 0; i < n - 1; i++) {
+        h = segSeg(side[i], side[i + 1], seg[0], seg[1]);
+        if (h !== null) { out.push(h); return out; }
+        out.push(side[i + 1]);
+      }
+      notes.push("trim: no intersection found");
+      return out;
+    }
+    out = [];
+    for (i = 0; i < n - 1; i++) {
+      h = segSeg(side[i], side[i + 1], seg[0], seg[1]);
+      if (h !== null) {
+        out.push(h);
+        for (var k = i + 1; k < n; k++) { out.push(side[k]); }
+        return out;
+      }
+    }
+    return out;
+  }
+
+  
+  function extractSide(profile, cA, cB, notes) {
+    var n = profile.length;
+    if (n < 3) { return profile.slice(); }
+    var start = null, i;
+    for (i = 0; i < n; i++) {
+      if (dist2xy(profile[i], cA) < TOL2) { start = i; break; }
+    }
+    if (start === null) {
+      notes.push("side: start corner not found");
+      return [];
+    }
+    var out = [];
+    for (i = start; i < n; i++) {
+      out.push(profile[i]);
+      if (dist2xy(profile[i], cB) < TOL2) { return out; }
+    }
+    notes.push("side: end corner not found");
+    return out;
+  }
+
+  
+  function stretch(seg, k) {
+    var m = mid(seg[0], seg[1]);
+    return [add(seg[0], mul(sub(seg[0], m), k)), add(seg[1], mul(sub(seg[1], m), k))];
+  }
+
+  
+  function lerpParam(a, b, frac) { return a + (b - a) * frac; }
+
+  
+  function shared(sides, seg, mode, notes) {
+    var AB = sides[0], BC = sides[1], CD = sides[2], DA = sides[3];
+    var tag = mode === "L" ? "leftRight" : "normal";
+
+    var BChead = trimSide(BC, seg, 1, notes);
+    if (BChead.length < 2) { notes.push("cut: partA/BC aborted"); return null; }
+    var DAtail = trimSide(DA, seg, 0, notes);
+    if (DAtail.length < 2) {
+      notes.push("cut (" + tag + "): partA/DA aborted");
+      return null;
+    }
+    var BCtail = trimSide(BC, seg, 0, notes);
+    if (BCtail.length === 0) { notes.push("cut: partB/BC aborted"); return null; }
+    var CDtrim = CD.slice(1);
+    var DAhead = trimSide(DA, seg, 1, notes);
+    if (DAhead.length === 0) {
+      notes.push("port: cut (" + tag + "): partB/DA empty cell, cut skipped");
+      return null;
+    }
+    var DAhead1 = DAhead.slice(1);
+
+    var poly1 = AB.slice();
+    poly1 = poly1.concat(BChead.slice(1), DAtail);
+    var corners1 = [AB[0], AB[AB.length - 1], BChead[BChead.length - 1], DAtail[0], DAtail[DAtail.length - 1]];
+
+    var poly2 = [DAhead[DAhead.length - 1]].concat(BCtail, CDtrim, DAhead1);
+    var corners2 = [DAhead[DAhead.length - 1], BCtail[0], BCtail[BCtail.length - 1], DAhead[0]];
+
+    if (mode === "L") {
+      corners1 = [corners1[3], corners1[0], corners1[1], corners1[2]];
+      corners2 = [corners2[3], corners2[0], corners2[1], corners2[2]];
+    }
+    return [poly1, corners1, poly2, corners2];
+  }
+
+  
+  
+  
+  
+  
+  function cornerCut(AB, BC, CD, DA, seg) {
+    var i, h, H1 = null, H2 = null;
+    for (i = 0; i < AB.length - 1; i++) {
+      h = segSeg(AB[i], AB[i + 1], seg[0], seg[1]);
+      if (h) { H1 = h; break; }
+    }
+    for (i = 0; i < BC.length - 1; i++) {
+      h = segSeg(BC[i], BC[i + 1], seg[0], seg[1]);
+      if (h) { H2 = h; break; }
+    }
+    if (!H1 || !H2) { return null; }
+    var ABhead = trimSide(AB, seg, 1);   
+    var BCtail = trimSide(BC, seg, 0);   
+    var ABtail = trimSide(AB, seg, 0);   
+    var BChead = trimSide(BC, seg, 1);   
+    if (ABhead.length < 2 || BCtail.length < 2 ||
+        ABtail.length < 2 || BChead.length < 2) { return null; }
+    var rest = [H1, H2].concat(BCtail.slice(1), CD.slice(1), DA.slice(1), ABhead.slice(1));
+    var restCorners = [H1, H2, BCtail[BCtail.length - 1], CD[CD.length - 1]];
+    var corner = [H1].concat(ABtail.slice(1), BChead.slice(1));
+    var cornerCorners = [H1, ABtail[ABtail.length - 1], H2, H1];
+    return [corner, cornerCorners, rest, restCorners];
+  }
+
+  
+  
+  
+  
+  function cornerCutP2(AB, BC, CD, DA, seg) {
+    var i, h, H1 = null, H2 = null;
+    for (i = 0; i < BC.length - 1; i++) {
+      h = segSeg(BC[i], BC[i + 1], seg[0], seg[1]);
+      if (h) { H1 = h; break; }
+    }
+    for (i = 0; i < CD.length - 1; i++) {
+      h = segSeg(CD[i], CD[i + 1], seg[0], seg[1]);
+      if (h) { H2 = h; break; }
+    }
+    if (!H1 || !H2) { return null; }
+    var BCtail = trimSide(BC, seg, 0);   
+    var CDhead = trimSide(CD, seg, 1);   
+    if (BCtail.length < 2 || CDhead.length < 2) { return null; }
+    var kept = [H2, H1].concat(BCtail.slice(1), CDhead.slice(1));
+    var keptCorners = [H2, H1, BCtail[BCtail.length - 1], H2];
+    var BChead = trimSide(BC, seg, 1);   
+    var CDtail = trimSide(CD, seg, 0);   
+    if (BChead.length < 2 || CDtail.length < 2) { return null; }
+    var rest = [H1].concat(BChead.slice().reverse().slice(1),
+                           AB.slice().reverse().slice(1),
+                           DA.slice().reverse().slice(1),
+                           CDtail.slice().reverse().slice(1));
+    var restCorners = [H1, BChead[0], AB[0], CDtail[CDtail.length - 1]];
+    return [rest, restCorners, kept, keptCorners];
+  }
+
+  
+  
+  
+  
+  function cornerCutP3(AB, BC, CD, DA, seg) {
+    var i, h, H_da = null, H_cd = null;
+    for (i = 0; i < DA.length - 1; i++) {
+      h = segSeg(DA[i], DA[i + 1], seg[0], seg[1]);
+      if (h) { H_da = h; break; }
+    }
+    for (i = 0; i < CD.length - 1; i++) {
+      h = segSeg(CD[i], CD[i + 1], seg[0], seg[1]);
+      if (h) { H_cd = h; break; }
+    }
+    if (!H_da || !H_cd) { return null; }
+    var CDtail = trimSide(CD, seg, 0);   
+    var DAhead = trimSide(DA, seg, 1);   
+    if (CDtail.length < 2 || DAhead.length < 2) { return null; }
+    var kept = [H_da].concat(CDtail, DAhead.slice(1));
+    var mid = CDtail[Math.min(Math.floor(CDtail.length / 2), CDtail.length - 1)];
+    var keptCorners = [H_da, CDtail[0], mid, DAhead[0], H_da];
+    var CDhead = trimSide(CD, seg, 1);   
+    var DAtail = trimSide(DA, seg, 0);   
+    var rest = AB.concat(BC, CDhead, [H_da], DAtail, [AB[0]]);
+    var restCorners = [AB[0], BC[0], CD[0], H_da, AB[0]];
+    return [rest, restCorners, kept, keptCorners];
+  }
+
+  
+  function splitPolygon(profile, corners, seg, notes) {
+    if (corners.length < 4) { notes.push("cut: not enough border corners, abort"); return null; }
+    if (profile.length < 4) { notes.push("cut: not enough border points, abort"); return null; }
+    var c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
+    var AB = extractSide(profile, c0, c1, notes);
+    var BC = extractSide(profile, c1, c2, notes);
+    var CD = extractSide(profile, c2, c3, notes);
+    var DA = extractSide(profile, c3, c0, notes);
+    var nm = [["AB", AB], ["BC", BC], ["CD", CD], ["DA", DA]];
+    for (var i = 0; i < 4; i++) {
+      if (nm[i][1].length < 2) {
+        notes.push("cut: " + nm[i][0] + " segment extraction failed");
+        return null;
+      }
+    }
+    if (sideCrosses(DA, seg) && sideCrosses(BC, seg)) {
+      return { r: shared([AB, BC, CD, DA], seg, "normal", notes), mode: "normal" };
+    }
+    if (sideCrosses(AB, seg) && sideCrosses(CD, seg)) {
+      return { r: shared([BC, CD, DA, AB], seg, "L", notes), mode: "leftRight" };
+    }
+    
+    
+    if (sideCrosses(CD, seg) && sideCrosses(BC, seg)) {
+      
+      
+      var cp2 = cornerCutP2(AB, BC, CD, DA, seg);
+      if (cp2) { return { r: cp2, mode: "corner@P2" }; }
+    }
+    if (sideCrosses(AB, seg) && sideCrosses(BC, seg)) {
+      var cc = cornerCut(AB, BC, CD, DA, seg);
+      if (cc) { return { r: cc, mode: "normal" }; }
+    }
+    if (sideCrosses(CD, seg) && sideCrosses(DA, seg)) {
+      
+      var cp3 = cornerCutP3(AB, BC, CD, DA, seg);
+      if (cp3) { return { r: cp3, mode: "corner@P3" }; }
+    }
+    notes.push("cut: no valid split");
+    return { r: null, mode: "no split (partA/BC)", engineAbort: true };
+  }
+
+  
+  function engineBorder(cornersClosed, spacing) {
+    var sp = spacing === undefined ? SPACING : spacing;
+    var n = cornersClosed.length;
+    if (n < 3) { return cornersClosed.slice(); }
+    var out = [], i, k;
+    for (i = 0; i < n - 1; i++) {
+      var a = cornersClosed[i], b = cornersClosed[i + 1];
+      var d = Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2) + Math.pow(b[2] - a[2], 2));
+      var steps = Math.floor(d / sp) + 1;
+      if (steps < 1) { steps = 1; }
+      var kmax = (i === n - 2) ? steps : steps - 1;
+      for (k = 0; k <= kmax; k++) { out.push(lerpPt(a, b, k / steps)); }
+    }
+    return out;
+  }
+
+  
+  function rectOutline(p, d, alongHalf, acrossHalf) {
+    
+    
+    var nx = -d[1], ny = d[0];
+    var pts = [], sgn = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    for (var i = 0; i < 4; i++) {
+      var sx = sgn[i][0], sy = sgn[i][1];
+      pts.push([p[0] + d[0] * alongHalf * sx + nx * acrossHalf * sy,
+                p[1] + d[1] * alongHalf * sx + ny * acrossHalf * sy]);
+    }
+    pts.push(pts[0]);
+    return pts;
+  }
+
+  function nearestOnPoly(p, poly) {
+    var best = 1e30, bq = null;
+    for (var i = 0; i < poly.length - 1; i++) {
+      var a = poly[i], b = poly[i + 1];
+      var dx = b[0] - a[0], dy = b[1] - a[1];
+      var L2 = dx * dx + dy * dy;
+      var t = L2 < 1e-12 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+      var q = [a[0] + t * dx, a[1] + t * dy];
+      var dd = Math.sqrt(Math.pow(p[0] - q[0], 2) + Math.pow(p[1] - q[1], 2));
+      if (dd < best) { best = dd; bq = q; }
+    }
+    return bq;
+  }
+
+  
+  
+  
+  
+  
+  
+  function boxHits(polyPts, centre, d, alongHalf, acrossHalf, edges) {
+    var box = rectOutline(centre, d, alongHalf, acrossHalf);
+    var use = edges || [0, 1, 2, 3];
+    for (var k = 0; k < use.length; k++) {
+      var i = use[k];
+      for (var j = 0; j < polyPts.length - 1; j++) {
+        if (segSeg(box[i], box[i + 1], polyPts[j], polyPts[j + 1]) !== null) { return true; }
+      }
+    }
+    return false;
+  }
+
+  
+  function sideGeometry(border, cA, cB, notes) {
+    var side = extractSide(border, cA, cB, notes);
+    if (side.length < 2) { return null; }
+    var spts = side, len = 0, i;
+    for (i = 0; i < spts.length - 1; i++) {
+      len += Math.sqrt(Math.pow(spts[i + 1][0] - spts[i][0], 2) +
+                       Math.pow(spts[i + 1][1] - spts[i][1], 2));
+    }
+    return {
+      len: len,
+      pts: spts,
+      arc: function (st) {
+        var acc = 0;
+        for (var j = 0; j < spts.length - 1; j++) {
+          var a = spts[j], b = spts[j + 1];
+          var L = Math.sqrt(Math.pow(b[0] - a[0], 2) + Math.pow(b[1] - a[1], 2));
+          if (L < 1e-12) { continue; }
+          if (acc + L >= st) {
+            var t = (st - acc) / L;
+            return [
+              [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2]],
+              [(b[0] - a[0]) / L, (b[1] - a[1]) / L]
+            ];
+          }
+          acc += L;
+        }
+        return null;
+      }
+    };
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  function slideUntilClear(borderPts, p, d, halfAcross, halfAlong, extra) {
+    var px = d[1], py = -d[0];
+    var c0 = [p[0] + halfAcross * px, p[1] + halfAcross * py];
+    for (var j = 0; j < 25; j++) {
+      if (j) {
+        c0 = [c0[0] + px * 20.0, c0[1] + py * 20.0];
+      }
+      if (boxHits(borderPts, c0, d, halfAlong, halfAcross, [0, 1, 2])) {
+        if (j === 24) { break; }
+        continue;
+      }
+      var blocked = false;
+      if (extra) {
+        for (var k = 0; k < extra.length && !blocked; k++) {
+          blocked = boxHits(extra[k], c0, d, halfAlong, halfAcross, null);
+        }
+      }
+      if (blocked) { return { ok: false, c0: c0, slide: j }; }
+      return { ok: true, c0: c0, slide: j };
+    }
+    return { ok: false, c0: c0, slide: 24 };
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  function winding(corners) {
+    var s = 0, n = corners.length;
+    for (var i = 0; i < n; i++) {
+      var a = corners[i], b = corners[(i + 1) % n];
+      s += a[0] * b[1] - b[0] * a[1];
+    }
+    if (Math.abs(s) < 1e-9) { return 0; }
+    return s > 0 ? 1 : -1;
+  }
+
+  function pointInPoly(pt, poly) {
+    var x = pt[0], y = pt[1], inside = false, n = poly.length;
+    for (var i = 0; i < n; i++) {
+      var a = poly[i], b = poly[(i + 1) % n];
+      if ((a[1] > y) !== (b[1] > y)) {
+        var t = b[1] !== a[1] ? (y - a[1]) / (b[1] - a[1]) : 0;
+        if (x < a[0] + t * (b[0] - a[0])) { inside = !inside; }
+      }
+    }
+    return inside;
+  }
+
+  
+  
+  
+  function isSimpleQuad(corners) {
+    if (!corners || corners.length !== 4) { return false; }
+    if (segSeg(corners[0], corners[1], corners[2], corners[3]) !== null) { return false; }
+    if (segSeg(corners[1], corners[2], corners[3], corners[0]) !== null) { return false; }
+    return true;
+  }
+
+  function edgeCount(poly) {
+    if (!poly || poly.length < 2) { return 0; }
+    var n = poly.length;
+    return dist2xy(poly[0], poly[n - 1]) < 1e-9 ? n - 1 : n;
+  }
+
+  function dist2ToSeg(p, a, b) {
+    var dx = b[0] - a[0], dy = b[1] - a[1];
+    var L2 = dx * dx + dy * dy;
+    var t = L2 < 1e-12 ? 0 : ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2;
+    t = Math.max(0, Math.min(1, t));
+    var ex = p[0] - (a[0] + t * dx), ey = p[1] - (a[1] + t * dy);
+    return ex * ex + ey * ey;
+  }
+
+  
+  
+  
+  
+  
+  function generateExtension(fieldPts, borderPts, back, notes) {
+    var nm = notes || [];
+    var seg = stretch(back, 20.0);
+    var sl = splitPolygon(fieldPts, borderPts, seg, nm);
+    if (sl && !sl.r) {
+      sl = splitPolygon(fieldPts, borderPts, [seg[1], seg[0]], nm);
+    }
+    if (!sl || !sl.r) {
+      var why = (sl && sl.engineAbort && nm.length) ? nm[nm.length - 1]
+              : ("cut " + (sl ? sl.mode : "failed"));
+      return { ok: false, reason: why,
+               engineAbort: !!(sl && sl.engineAbort), notes: nm };
+    }
+    return { ok: true, profile: sl.r[2], quad: sl.r[3], mode: sl.mode, notes: nm };
+  }
+
+  function buildExtensionForPlot(corners, border, opts) {
+    var o = opts || {};
+    var start = o.start === undefined ? 700.0 : o.start;
+    var step = o.step === undefined ? 50.0 : o.step;
+    var iters = o.iters === undefined ? 30 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 350.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 600.0 : o.halfAlong;
+    var rectAlong = o.rectAlong === undefined ? 750.0 : o.rectAlong;
+    var rectAcross = o.rectAcross === undefined ? 300.0 : o.rectAcross;
+    var offset = o.offset === undefined ? 200.0 : o.offset;
+
+    var trace = { rejected: [] };
+    var notes = [];
+    var P0 = corners[0], P1 = corners[1], P2 = corners[2], P3 = corners[3];
+    if (o.backFacade) {
+      trace.backFacade = o.backFacade;
+      trace.facadeSource = "explicit";
+      var gen0 = generateExtension(border, corners, o.backFacade, notes);
+      gen0.trace = trace;
+      return gen0;
+    }
+    var sg = sideGeometry(border, P1, P2, notes);
+    var sg30 = sideGeometry(border, P3, P0, notes);
+    if (!sg) {
+      return { ok: false, reason: "side extraction failed", notes: notes, trace: trace };
+    }
+    trace.sideLen = sg.len;
+
+    
+    
+    
+    var obs = sg30 ? [sg30.pts] : [];
+    var m = [(P2[0] + P3[0]) / 2, (P2[1] + P3[1]) / 2, (P2[2] + P3[2]) / 2];
+    
+    
+    
+    
+    
+    
+    
+    
+    var at = o.aTransform || previewA(corners, border, {});
+    if (!at) {
+      return { ok: false, reason: "A fit found no candidate \u2014 no facade",
+               notes: notes, trace: trace };
+    }
+    var bt = o.bTransform || previewSecondary(corners, border, at.origin, at.dir, {});
+    var boxes = [["A", rectOutline(at.origin, at.dir, rectAlong, rectAcross)]];
+    if (bt) {
+      boxes.push(["B", rectOutline(bt.origin, bt.dir, 300.0, 200.0)]);
+    }
+    var Q = null, qsrc = null, bestD = 1e30;
+    for (var bi = 0; bi < boxes.length; bi++) {
+      var poly = boxes[bi][1];
+      for (var vi = 0; vi < poly.length; vi++) {
+        var ddx = m[0] - poly[vi][0], ddy = m[1] - poly[vi][1];
+        var d2 = ddx * ddx + ddy * ddy;
+        if (d2 < bestD) { bestD = d2; Q = poly[vi]; qsrc = boxes[bi][0]; }
+      }
+    }
+    if (!Q) {
+      return { ok: false, reason: "no candidate corner", notes: notes, trace: trace };
+    }
+    var A0 = null;
+    {
+      
+      
+      var fx = P1[0] - P0[0], fy = P1[1] - P0[1];
+      var fl2 = fx * fx + fy * fy;
+      if (fl2 < 1e-12) { return { ok: false, reason: "degenerate street edge", notes: notes, trace: trace }; }
+      var tt = ((Q[0] - P0[0]) * fx + (Q[1] - P0[1]) * fy) / fl2;
+      if (tt < 0) { tt = 0; } else if (tt > 1) { tt = 1; }
+      var proj = [P0[0] + tt * fx, P0[1] + tt * fy];
+      var vx = Q[0] - proj[0], vy = Q[1] - proj[1];
+      var vl = Math.sqrt(vx * vx + vy * vy);
+      if (vl < 1e-12) { return { ok: false, reason: "degenerate facade normal", notes: notes, trace: trace }; }
+      A0 = [Q[0] + offset * vx / vl, Q[1] + offset * vy / vl];
+      trace.arc = at.arc;
+      trace.slide = at.slide;
+      trace.boxSource = qsrc;
+      trace.boxes = boxes.map(function (b) { return b[0]; });
+      trace.origin = qsrc === "B" ? bt.origin : at.origin;
+      trace.dir = qsrc === "B" ? bt.dir : at.dir;
+      trace.Q = Q;
+      trace.A0 = A0;
+    }
+
+    var dd = unit2(P2[0] - P1[0], P2[1] - P1[1]);
+    var dirv = [-dd[1], dd[0]];
+    
+    
+    
+    
+    
+    var hits = linePolyHits(A0, dirv, border).filter(function (h) {
+      return Math.hypot(h[0] - A0[0], h[1] - A0[1]) <= 10000 + 1e-9;
+    });
+    trace.facadeHitsOnBlade = hits.length;
+    if (hits.length !== 2) {
+      trace.facadeHits = hits.length;
+      return { ok: false, reason: "back facade has " + hits.length + " border crossings",
+               notes: notes, trace: trace };
+    }
+    var back = [[hits[0][0], hits[0][1], P1[2]], [hits[1][0], hits[1][1], P1[2]]];
+    trace.backFacade = back;
+    var gen = generateExtension(border, corners, back, notes);
+    gen.trace = trace;
+    return gen;
+  }
+
+  
+  
+  
+  
+  function a0Pair(corners, border, frac) {
+    var sg12 = sideGeometry(border, corners[1], corners[2]);
+    var sg30 = sideGeometry(border, corners[3], corners[0]);
+    if (!sg12 || !sg30) { return null; }
+    var along = 180.0 + 70.0 * frac;
+    var a12 = arcPointOrLast(sg12, along);
+    var a03 = arcPointOrLast(sg30, Math.max(0, sg30.len - along));
+    if (!a12 || !a03) { return null; }
+    return { a12: a12, a03: a03, sg12: sg12, sg30: sg30 };
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  function fitHouses(corners, border, opts) {
+    var o = opts || {};
+    var frac = o.frac === undefined ? 0.5 : o.frac;
+    var level = o.level === undefined ? 4 : o.level;
+    var start = o.start === undefined ? 600.0 : o.start;
+    var step = o.step === undefined ? 50.0 : o.step;
+    var iters = o.iters === undefined ? 20 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 230.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 600.0 : o.halfAlong;
+    var houseAlong = o.houseAlong === undefined ? 750.0 : o.houseAlong;
+    var houseAcross = o.houseAcross === undefined ? 300.0 : o.houseAcross;
+    var secAlong = o.secAlong === undefined ? 300.0 : o.secAlong;
+    var secAcross = o.secAcross === undefined ? 200.0 : o.secAcross;
+
+    var out = { primary: null, primaryShape: null, secondary: null,
+                secondaryShape: null, sideLen: 0, branch: null, stepped: false,
+                street: 0, halfAlong: 0, halfAcross: 0, chord: null };
+    var pair = a0Pair(corners, border, frac);
+    if (!pair) { return out; }
+    var sg = pair.sg12;
+    out.sideLen = sg.len;
+    out.chord = [pair.a03, pair.a12];
+    var street = Math.sqrt(Math.pow(corners[1][0] - corners[0][0], 2) +
+                           Math.pow(corners[1][1] - corners[0][1], 2));
+    out.street = street;
+    var fullFacade = !!o.fullFacade;
+    
+    
+    
+    var steppedBranch = (level >= 4 && street < 2100.0 &&
+                         !(street >= 1275.0 && frac >= 0.5));
+    var anchorLeft = false;
+    var stepped = false;
+    if (steppedBranch) {
+      var d01 = unit2(corners[1][0] - corners[0][0], corners[1][1] - corners[0][1]);
+      var d12 = unit2(corners[2][0] - corners[1][0], corners[2][1] - corners[1][1]);
+      var d03 = unit2(corners[3][0] - corners[0][0], corners[3][1] - corners[0][1]);
+      var cos12 = d12[0] * d01[0] + d12[1] * d01[1];
+      var cos03 = d03[0] * d01[0] + d03[1] * d01[1];
+      var threshold = 0.25 - (street < 900.0 ? 0.2 : 0.0);
+      if (cos12 > threshold && cos03 > 0.0) {
+        stepped = true;
+      } else if (cos12 < 0.0 && cos03 < -threshold) {
+        stepped = true;
+        anchorLeft = true;
+      }
+      out.cos12 = cos12; out.cos03 = cos03; out.threshold = threshold;
+    }
+    out.steppedBranch = steppedBranch;
+    out.stepped = stepped;
+    out.anchorLeft = anchorLeft;
+    out.fullFacade = fullFacade;
+
+    var prim = null, hAlong = 0, hAcross = 0;
+    if (!stepped) {
+      out.branch = "normal";
+      hAlong = halfAlong;
+      hAcross = halfAcross;
+      for (var k = 0; k < iters; k++) {
+        var s = start + step * k;
+        if (s > sg.len - hAlong) { break; }
+        var pd = sg.arc(s);
+        if (!pd) { break; }
+        var res = slideUntilClear(sg.pts, pd[0], pd[1], hAcross, hAlong,
+                                  [out.chord]);
+        if (res.ok) {
+          prim = { c0: res.c0, dir: pd[1], slide: res.slide, arc: s };
+          break;
+        }
+      }
+    } else if (anchorLeft) {
+      
+      
+      out.branch = "stepped-anchor-left";
+      hAlong = 330.0;
+      var sg30 = pair.sg30;
+      var v03 = unit2(corners[3][0] - corners[0][0], corners[3][1] - corners[0][1]);
+      var hsL = linePolyHits(pair.a03, [-v03[1], v03[0]], border);
+      if (hsL.length !== 2) {
+        out.reason = "A0 chord has " + hsL.length + " border crossings";
+        out.halfAlong = hAlong;
+        return out;
+      }
+      var chordLenL = Math.sqrt(Math.pow(hsL[1][0] - hsL[0][0], 2) +
+                                Math.pow(hsL[1][1] - hsL[0][1], 2));
+      hAcross = chordLenL * (fullFacade ? 0.5 : 0.35 * 0.5);
+      out.chordHits = hsL;
+      var startL = sg30.len - hAlong;
+      for (var kL = 0; kL < 60; kL++) {
+        var sL = startL - 25.0 * kL;
+        if (sL < Math.min(startL, hAlong)) { break; }
+        var pdL = sg30.arc(sL);
+        if (!pdL) { break; }
+        var resL = slideUntilClear(sg30.pts, pdL[0], pdL[1], hAcross, hAlong,
+                                   [border]);
+        if (resL.ok) {
+          prim = { c0: resL.c0, dir: pdL[1], slide: resL.slide, arc: sL };
+          break;
+        }
+      }
+      out.anchorLeftFacadeUnmodelled = true;
+    } else {
+      out.branch = "stepped";
+      hAlong = 330.0;
+      var ux = corners[2][0] - corners[1][0], uy = corners[2][1] - corners[1][1];
+      var L = Math.sqrt(ux * ux + uy * uy);
+      ux /= L; uy /= L;
+      var hs = linePolyHits(pair.a12, [-uy, ux], border);
+      if (hs.length !== 2) {
+        out.reason = "A0 chord has " + hs.length + " border crossings";
+        out.halfAlong = hAlong;
+        return out;
+      }
+      var chordLen = Math.sqrt(Math.pow(hs[1][0] - hs[0][0], 2) +
+                               Math.pow(hs[1][1] - hs[0][1], 2));
+      var measure = fullFacade ? chordLen : chordLen * 0.5;
+      var decay = measure * 0.1;
+      out.chordHits = hs;
+      for (var attempt = 0; attempt < 10; attempt++) {
+        hAcross = (measure - decay * attempt) * 0.5;
+        var found = null;
+        for (var q = 0; q < 6 * attempt; q++) {
+          var s2 = 30.0 * q;
+          if (s2 > sg.len - hAlong) { break; }
+          var pd2 = sg.arc(s2);
+          if (!pd2) { break; }
+          var res2 = slideUntilClear(sg.pts, pd2[0], pd2[1], hAcross, hAlong,
+                                     [border]);
+          if (res2.ok) {
+            found = { c0: res2.c0, dir: pd2[1], slide: res2.slide, arc: s2,
+                      attempt: attempt };
+            break;
+          }
+        }
+        if (found) { prim = found; break; }
+      }
+    }
+    out.halfAlong = hAlong;
+    out.halfAcross = hAcross;
+    if (prim) {
+      out.primary = prim;
+      out.primaryShape = rectOutline(prim.c0, prim.dir, houseAlong, houseAcross);
+      out.houseShape = rectOutline(prim.c0, prim.dir, hAlong, hAcross);
+    }
+    if (o.secondary) {
+      out.secondary = { c0: o.secondary.c0, dir: o.secondary.dir, slide: null, arc: null };
+      out.secondaryShape = rectOutline(o.secondary.c0, o.secondary.dir, secAlong, secAcross);
+    }
+    return out;
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  function fitSecondary(corners, border, opts) {
+    var o = opts || {};
+    var frac = o.frac === undefined ? 0.5 : o.frac;
+    var start = o.start === undefined ? 900.0 : o.start;
+    var step = o.step === undefined ? -50.0 : o.step;
+    var iters = o.iters === undefined ? 20 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 230.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 400.0 : o.halfAlong;
+    var pivotAlong = o.pivotAlong === undefined ? 0.0 : o.pivotAlong;
+    var pivotAcross = o.pivotAcross === undefined ? 0.0 : o.pivotAcross;
+    var useGate = !!o.gate;
+    var trace = o.trace || {};
+    var street = Math.sqrt(Math.pow(corners[1][0] - corners[0][0], 2) +
+                           Math.pow(corners[1][1] - corners[0][1], 2));
+    
+    
+    var houses = fitHouses(corners, border, { frac: frac });
+    var stepped = houses.stepped;
+    var anchorLeft = houses.anchorLeft;
+    var sg = sideGeometry(border, corners[3], corners[0]);
+    if (!sg) {
+      trace.reason = "P3\u2192P0 side extraction failed";
+      return null;
+    }
+    var pair = a0Pair(corners, border, frac);
+    var extras = [];
+    if (pair) { extras.push([pair.a12, pair.a03]); }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    if (useGate && stepped && !anchorLeft) {
+      if (!bpartFacadeGate(houses.primary, houses.halfAcross,
+                           extras.length ? extras[0][1] : null,
+                           extras.length ? extras[0][0] : null, sg.pts)) {
+        trace.gate = false;
+        trace.reason = "local_21b7 facade gate failed";
+        return null;
+      }
+      trace.gate = true;
+    } else {
+      trace.gate = null;
+    }
+    for (var k = 0; k < iters; k++) {
+      var s = sg.len - start + step * k;
+      if (s < 0) {
+        trace.reason = "start past the P3\u2192P0 side (side too short)";
+        return null;
+      }
+      var pd = sg.arc(s);
+      if (!pd) {
+        trace.reason = "P3\u2192P0 arc point failed at s=" + Math.round(s);
+        return null;
+      }
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], halfAcross, halfAlong, extras);
+      if (!res.ok) { continue; }
+      var d = pd[1];
+      var px = d[1], py = -d[0];
+      var origin = [res.c0[0] + pivotAlong * d[0] + pivotAcross * px,
+                    res.c0[1] + pivotAlong * d[1] + pivotAcross * py];
+      return { c0: res.c0, origin: origin, dir: d, slide: res.slide, arc: s,
+               sideLen: sg.len, obstacle: extras.length ? extras[0] : null,
+               stepped: stepped,
+               yaw: Math.atan2(d[1], d[0]) - Math.PI * 0.5,
+               shape: rectOutline(res.c0, d, halfAlong, halfAcross) };
+    }
+    trace.reason = "no candidate cleared the P3\u2192P0 side";
+    return null;
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  function previewA(corners, border, opts) {
+    var o = opts || {};
+    var start = o.start === undefined ? 700.0 : o.start;
+    var step = o.step === undefined ? 50.0 : o.step;
+    var iters = o.iters === undefined ? 30 : o.iters;
+    var halfAcross = o.halfAcross === undefined ? 350.0 : o.halfAcross;
+    var halfAlong = o.halfAlong === undefined ? 600.0 : o.halfAlong;
+    var trace = o.trace || {};
+    var sg = sideGeometry(border, corners[1], corners[2], []);
+    if (!sg) { trace.reason = "P1\u2192P2 side extraction failed"; return null; }
+    
+    
+    
+    
+    var daSide = extractSide(border, corners[3], corners[0], trace.notes || []);
+    var abSide = extractSide(border, corners[0], corners[1], trace.notes || []);
+    var extras = [];
+    if (daSide && daSide.length >= 2) { extras.push(daSide); }
+    if (abSide && abSide.length >= 2) { extras.push(abSide); }
+    var rejected = [];
+    for (var k = 0; k < iters; k++) {
+      var s = start + step * k;
+      if (s > sg.len - halfAlong) { break; }
+      var pd = sg.arc(s);
+      if (!pd) { break; }
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], halfAcross, halfAlong,
+                                extras);
+      if (!res.ok) { rejected.push(s); continue; }
+      var out = { c0: res.c0, origin: res.c0, dir: pd[1], slide: res.slide,
+                  arc: s, sideLen: sg.len, rejected: rejected,
+                  shape: rectOutline(res.c0, pd[1], halfAlong, halfAcross) };
+      trace.arc = s; trace.rejected = rejected;
+      return out;
+    }
+    trace.rejected = rejected;
+    trace.reason = "no A preview candidate cleared the border within " + iters +
+                   " x " + step + " (max arc " + (start + step * (iters - 1)) + ")";
+    return null;
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  function previewSecondary(corners, border, aOrigin, aDir, trace) {
+    trace = trace || {};
+    var ax = -aDir[1], ay = aDir[0];
+    var abox = [
+      [aOrigin[0] - 600.0 * aDir[0] - 350.0 * ax,
+       aOrigin[1] - 600.0 * aDir[1] - 350.0 * ay, 0],
+      [aOrigin[0] + 600.0 * aDir[0] - 350.0 * ax,
+       aOrigin[1] + 600.0 * aDir[1] - 350.0 * ay, 0],
+      [aOrigin[0] + 600.0 * aDir[0] + 350.0 * ax,
+       aOrigin[1] + 600.0 * aDir[1] + 350.0 * ay, 0],
+      [aOrigin[0] - 600.0 * aDir[0] + 350.0 * ax,
+       aOrigin[1] - 600.0 * aDir[1] + 350.0 * ay, 0]
+    ];
+    abox.push(abox[0]);
+    var sg = sideGeometry(border, corners[3], corners[0], []);
+    if (!sg || sg.len <= 600.0) {
+      trace.reason = "P3\u2192P0 side <= 600";
+      return null;
+    }
+    var bpts = border.map(function (p) { return [p[0], p[1], p[2]]; });
+    var extras = [bpts, abox];
+    var rejected = [];
+    for (var k = 0; k < 12; k++) {
+      var s = sg.len - 800.0 - 50.0 * k;
+      if (s < 0.0) { break; }
+      var pd = sg.arc(s);
+      if (!pd) { break; }
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], 200.0, 300.0, extras);
+      if (!res.ok) { rejected.push(s); continue; }
+      var d = pd[1];
+      
+      
+      
+      
+      
+      var a = [res.c0[0], res.c0[1], 0];
+      var b = [res.c0[0] - 5000.0 * d[0], res.c0[1] - 5000.0 * d[1], 0];
+      var hit = false;
+      for (var i = 0; i < abox.length - 1; i++) {
+        if (segSeg(a, b, abox[i], abox[i + 1]) !== null) { hit = true; break; }
+      }
+      if (hit) {
+        trace.arc = s; trace.c0 = res.c0; trace.dir = d; trace.slide = res.slide;
+        trace.rejected = rejected.concat([s]); trace.lineHit = true;
+        trace.aBox = abox; trace.lineSeg = [a, b];
+        trace.reason = "post-fit A-box line hit \u2014 B transform zeroed";
+        return null;
+      }
+      trace.arc = s; trace.c0 = res.c0; trace.dir = d; trace.slide = res.slide;
+      trace.rejected = rejected; trace.lineHit = false; trace.aBox = abox;
+      return { c0: res.c0, origin: res.c0, dir: d, slide: res.slide, arc: s,
+               sideLen: sg.len, rejected: rejected, lineHit: false,
+               aBox: abox, shape: rectOutline(res.c0, d, 300.0, 200.0) };
+    }
+    trace.rejected = rejected;
+    trace.reason = "no candidate cleared the preview A box";
+    return null;
+  }
+
+  function arcPointOrLast(sg, s) {
+    var pd = sg.arc(Math.min(s, sg.len));
+    if (pd) { return pd[0]; }
+    return sg.pts && sg.pts.length ? sg.pts[sg.pts.length - 1] : null;
+  }
+
+  
+  
+  
+  function lineSegHitCount(p, d, a, b) {
+    var rx = d[0], ry = d[1];
+    var sx = b[0] - a[0], sy = b[1] - a[1];
+    var den = rx * sy - ry * sx;
+    if (Math.abs(den) < 1e-12) { return 0; }
+    var qx = a[0] - p[0], qy = a[1] - p[1];
+    var u = (qx * ry - qy * rx) / den;
+    return (u >= -1e-9 && u <= 1 + 1e-9) ? 1 : 0;
+  }
+  function linePolyHits(p, d, pts) {
+    var hits = [];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var a = pts[i], b = pts[i + 1];
+      var rx = d[0], ry = d[1];
+      var sx = b[0] - a[0], sy = b[1] - a[1];
+      var den = rx * sy - ry * sx;
+      if (Math.abs(den) < 1e-12) { continue; }
+      var qx = a[0] - p[0], qy = a[1] - p[1];
+      var t = (qx * sy - qy * sx) / den;
+      var u = (qx * ry - qy * rx) / den;
+      if (u >= -1e-9 && u <= 1 + 1e-9) {
+        var x = p[0] + t * rx, y = p[1] + t * ry;
+        var seen = false;
+        for (var k = 0; k < hits.length; k++) {
+          if (Math.pow(x - hits[k][0], 2) + Math.pow(y - hits[k][1], 2) < 1e-8) {
+            seen = true; break;
+          }
+        }
+        if (!seen) { hits.push([x, y]); }
+      }
+    }
+    return hits;
+  }
+  function linePolyHitCount(p, d, pts) {
+    return linePolyHits(p, d, pts).length;
+  }
+  
+  
+  
+  
+  
+  
+  
+  function bpartFacadeGate(prim, halfAcross, a03, a12, sidePts) {
+    if (!prim || !a03 || !a12) { return false; }
+    var px = prim.dir[1], py = -prim.dir[0];
+    var base = [prim.c0[0] + halfAcross * px, prim.c0[1] + halfAcross * py];
+    if (linePolyHitCount(base, [px, py], sidePts) !== 1) { return false; }
+    if (lineSegHitCount(base, [px, py], a03, a12) !== 1) { return false; }
+    return true;
+  }
+
+  
+  function buildBeds(corners, frac, profile, opts) {
+    var o = opts || {};
+    var noOffset = !!o.noOffset;
+    var notes = [];
+    var modes = [];
+    var c0 = corners[0], c1 = corners[1], c2 = corners[2], c3 = corners[3];
+    var prof = profile || [c0, c1, c2, c3, c0];
+
+    function cut(tag, pf, cn, seg) {
+      var before = notes.length;
+      var r = splitPolygon(pf, cn, seg, notes);
+      if (!r || !r.r) {
+        return { ok: false, err: tag + " failed: " + (notes.slice(before).join("; ") || "no intersection") };
+      }
+      modes.push(r.mode);
+      return { ok: true, r: r.r, mode: r.mode };
+    }
+
+    var mAB = mid(c0, c1), mCD = mid(c2, c3);
+
+    var r1 = cut("cut1", prof, corners, stretch([mAB, mCD], 100.0));
+    if (!r1.ok) { return { ok: false, error: r1.err, notes: notes }; }
+    var A1poly = r1.r[0], A1c = r1.r[1], B1poly = r1.r[2], B1c = r1.r[3];
+    if (A1c.length < 4 || B1c.length < 4) {
+      return { ok: false, error: "cut1: fewer than 4 corners on a side", notes: notes };
+    }
+
+    var seg2 = stretch([lerpPt(B1c[0], B1c[1], 0.8), lerpPt(B1c[3], B1c[2], 0.8)], 10.0);
+    var r2 = cut("cut2", B1poly, B1c, seg2);
+    if (!r2.ok) { return { ok: false, error: r2.err, notes: notes }; }
+    var A2poly = r2.r[0], A2c = r2.r[1], B2poly = r2.r[2], B2c = r2.r[3];
+
+    var f3 = lerpParam(0.6, 0.8, frac);
+    var seg3 = stretch([lerpPt(B2c[1], B2c[2], f3), lerpPt(B2c[0], B2c[3], f3)], 100.0);
+    var r3 = cut("cut3", B2poly, B2c, seg3);
+    if (!r3.ok) { return { ok: false, error: r3.err, notes: notes }; }
+    var bed1 = r3.r[0], bed1c = r3.r[1], B3poly = r3.r[2], B3c = r3.r[3];
+    if (B3c.length === 0) {
+      return { ok: false, error: "fieldLeftB_corners num = 0, abort", notes: notes };
+    }
+
+    var f4 = lerpParam(0.7, 0.9, frac);
+    var seg4 = stretch([lerpPt(B3c[0], B3c[1], f4), lerpPt(B3c[3], B3c[2], f4)], 100.0);
+    var r4 = cut("cut4", B3poly, B3c, seg4);
+    if (!r4.ok) { return { ok: false, error: r4.err, notes: notes }; }
+    var A4poly = r4.r[0], A4c = r4.r[1], bed2 = r4.r[2], bed2c = r4.r[3];
+
+    var bed3 = null, shed = null;
+    if (bed2c.length !== 0) {
+      var f5 = 1.0 - lerpParam(0.6, 0.8, frac);
+      var seg5 = stretch([lerpPt(A1c[1], A1c[2], f5), lerpPt(A1c[0], A1c[3], f5)], 100.0);
+      var r5 = cut("cut5", A1poly, A1c, seg5);
+      if (!r5.ok) { return { ok: false, error: r5.err, notes: notes }; }
+      var A5poly = r5.r[0], A5c = r5.r[1];
+      bed3 = r5.r[2];
+
+      var f6 = lerpParam(0.1, 0.2, frac);
+      var seg6 = stretch([lerpPt(A5c[0], A5c[1], f6), lerpPt(A5c[3], A5c[2], f6)], 100.0);
+      var r6 = cut("cut6", A5poly, A5c, seg6);
+      if (!r6.ok) { return { ok: false, error: r6.err, notes: notes }; }
+      shed = r6.r[0];
+    }
+
+    var off = [0, 0, 0];
+    var d = sub(mAB, mCD);
+    var mag = Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+    if (mag > 1e-4 && !noOffset) {
+      off = [d[0] / mag * 150.0, d[1] / mag * 150.0, 0];
+      bed1 = bed1.map(function (p) { return add(p, off); });
+      if (shed) { shed = shed.map(function (p) { return add(p, off); }); }
+    }
+
+    return { ok: true, bed1: bed1, bed2: bed2, bed3: bed3, shed: shed,
+             offset: off, modes: modes, notes: notes };
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  function plantGrid(beds, quad, profile, opts) {
+    var o = opts || {};
+    var step = o.step === undefined ? 100.0 : o.step;
+    var inset2 = o.inset2 === undefined ? 5000.0 : o.inset2;
+    if (!beds || !quad || quad.length < 4) { return null; }
+    var u = unit2(quad[2][0] - quad[1][0], quad[2][1] - quad[1][1]);
+    if (u[0] === 0 && u[1] === 0) { return null; }
+    var src = (profile && profile.length) ? profile : quad;
+    var minX = 1e30, maxX = -1e30, minY = 1e30, maxY = -1e30;
+    src.forEach(function (p) {
+      minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+      minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+    });
+    var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    var nx = Math.floor((maxX - minX) / step);
+    var nz = Math.floor((maxY - minY) / step);
+    var e1x = u[1], e1y = -u[0];
+    var list = [beds.bed1, beds.bed2, beds.bed3].filter(Boolean);
+    var fallback = false;
+    
+    
+    
+    if (!list.length) {
+      list = [quad];
+      inset2 = 0.0;
+      fallback = true;
+    }
+    var pts = [];
+    for (var i = -nx; i <= nx; i++) {
+      for (var j = -nz; j <= nz; j++) {
+        var s = (i + 0.5) * step;
+        var t = (j + 0.5) * step;
+        var p = [cx + e1x * s + u[0] * t, cy + e1y * s + u[1] * t, 0];
+        for (var b = 0; b < list.length; b++) {
+          var poly = list[b];
+          if (!pointInPoly(p, poly)) { continue; }
+          var near = false;
+          for (var k = 0; k < poly.length - 1; k++) {
+            if (dist2ToSeg(p, poly[k], poly[k + 1]) < inset2) { near = true; break; }
+          }
+          if (!near) { pts.push([p[0], p[1]]); }
+          b = list.length;
+        }
+      }
+    }
+    var edges = 0;
+    list.forEach(function (poly) { edges += edgeCount(poly); });
+    return { count: pts.length, points: pts, bedEdges: edges, step: step,
+             inset: Math.sqrt(inset2), fallbackExtension: fallback };
+  }
+
+  
+  
+  
+  function shrubStats(beds, opts) {
+    var o = opts || {};
+    var density = o.density === undefined ? 6 : o.density;
+    var accept = o.accept === undefined ? 0.3 : o.accept;
+    var edges = 0;
+    [beds && beds.bed1, beds && beds.bed2, beds && beds.bed3, beds && beds.shed]
+      .filter(Boolean).forEach(function (poly) { edges += edgeCount(poly); });
+    return { edges: edges, candidates: edges * density,
+             expected: edges * density * accept, density: density, accept: accept };
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  var SHED_ARC = 200.0, SHED_SAMPLE = 50.0, SHED_HALF = 150.0,
+      SHED_STEP = 20.0, SHED_ITERS = 50;
+
+  function shedMesh(profile, extCorners) {
+    var sg = sideGeometry(profile, extCorners[1], extCorners[2], []);
+    if (!sg) { return null; }
+    var A = arcPointOrLast(sg, SHED_ARC);
+    var B = arcPointOrLast(sg, SHED_ARC + SHED_SAMPLE);
+    if (!A || !B) { return null; }
+    var dx = B[0] - A[0], dy = B[1] - A[1];
+    var L = Math.sqrt(dx * dx + dy * dy);
+    if (L < 1e-9) { return null; }
+    dx /= L; dy /= L;
+    var px = dy, py = -dx, half = SHED_HALF;
+    var cx = A[0] + half * px, cy = A[1] + half * py;
+    var pts = sg.pts;
+    function box(k) {
+      var ox = cx + k * SHED_STEP * px, oy = cy + k * SHED_STEP * py;
+      var p0 = [ox - half * dx, oy - half * dy];
+      var p1 = [p0[0] + 2 * half * px, p0[1] + 2 * half * py];
+      var p2 = [p1[0] + 2 * half * dx, p1[1] + 2 * half * dy];
+      var p3 = [p2[0] - 2 * half * px, p2[1] - 2 * half * py];
+      return [p0, p1, p2, p3];
+    }
+    function hits(poly) {
+      for (var e = 0; e < 3; e++) {          
+        var a = poly[e], b = poly[(e + 1) % 4];
+        for (var i = 0; i < pts.length - 1; i++) {
+          if (segSeg(a, b, pts[i], pts[i + 1])) { return true; }
+        }
+      }
+      return false;
+    }
+    var k = 0;
+    while (k < SHED_ITERS) {
+      k++;
+      if (!hits(box(k))) { break; }
+    }
+    return { origin: [cx + k * SHED_STEP * px, cy + k * SHED_STEP * py],
+             dir: [dx, dy], perp: [px, py], box: box(k), pushes: k,
+             arc: SHED_ARC, half: half };
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  var EXT_GATE_START = 200.0, EXT_GATE_HALF = 200.0,
+      EXT_GATE_STEP = 30.0, EXT_GATE_ITERS = 60;
+  function extensionClearance(profile, quad, opts) {
+    var o = opts || {};
+    var start = o.start === undefined ? EXT_GATE_START : o.start;
+    var half = o.half === undefined ? EXT_GATE_HALF : o.half;
+    var step = o.step === undefined ? EXT_GATE_STEP : o.step;
+    var iters = o.iters === undefined ? EXT_GATE_ITERS : o.iters;
+    var ring = (profile && profile.length > 3) ? profile.slice() : (quad || []).slice();
+    if (ring.length < 4 || !quad || quad.length < 3) {
+      return { ok: false, reason: "no extension polygon", tried: 0 };
+    }
+    var p0 = ring[0], pn = ring[ring.length - 1];
+    var dx0 = pn[0] - p0[0], dy0 = pn[1] - p0[1];
+    if (dx0 * dx0 + dy0 * dy0 > 1e-9) { ring.push([p0[0], p0[1], 0]); }
+    var sg = sideGeometry(ring, quad[1], quad[2], []);
+    if (!sg) {
+      return { ok: false, reason: "C1->P2 side extraction failed", tried: 0, sideLen: 0 };
+    }
+    var tried = 0;
+    for (var k = 0; k < iters; k++) {
+      var s = start + step * k;
+      if (s > sg.len - half) { break; }
+      var pd = sg.arc(s);
+      if (!pd) { break; }
+      tried++;
+      var res = slideUntilClear(sg.pts, pd[0], pd[1], half, half, [ring]);
+      if (res && res.ok) {
+        return { ok: true, arc: s, slide: res.slide, c0: res.c0, tried: tried };
+      }
+    }
+    return { ok: false, reason: "no 400x400 clear box", tried: tried, sideLen: sg.len };
+  }
+
+  
+  
+  
+  
+  
+  function shedAt(origin, dir, half) {
+    half = (half === undefined) ? SHED_HALF : half;
+    var L = Math.sqrt(dir[0] * dir[0] + dir[1] * dir[1]);
+    if (!(L > 1e-9)) { return null; }
+    var dx = dir[0] / L, dy = dir[1] / L;
+    var px = dy, py = -dx;
+    var ox = origin[0], oy = origin[1];
+    return {
+      origin: [ox, oy], dir: [dx, dy], perp: [px, py], pushes: 0,
+      arc: null, half: half, standIn: true,
+      box: [
+        [ox - half * dx - half * px, oy - half * dy - half * py],
+        [ox + half * dx - half * px, oy + half * dy - half * py],
+        [ox + half * dx + half * px, oy + half * dy + half * py],
+        [ox - half * dx + half * px, oy - half * dy + half * py]
+      ]
+    };
+  }
+
+var API = {
+    V: V, add: add, sub: sub, mul: mul, mid: mid, lerpPt: lerpPt, unit2: unit2,
+    segSeg: segSeg, sideCrosses: sideCrosses, trimSide: trimSide, extractSide: extractSide,
+    stretch: stretch, lerpParam: lerpParam, splitPolygon: splitPolygon,
+    cornerCut: cornerCut,
+    engineBorder: engineBorder, rectOutline: rectOutline, nearestOnPoly: nearestOnPoly,
+    boxHits: boxHits, sideGeometry: sideGeometry, slideUntilClear: slideUntilClear,
+    pointInPoly: pointInPoly, isSimpleQuad: isSimpleQuad, winding: winding,
+    buildExtensionForPlot: buildExtensionForPlot, generateExtension: generateExtension,
+    shedMesh: shedMesh, shedAt: shedAt, extensionClearance: extensionClearance,
+    fitHouses: fitHouses, fitSecondary: fitSecondary, previewA: previewA, previewSecondary: previewSecondary, buildBeds: buildBeds, plantGrid: plantGrid,
+    shrubStats: shrubStats, edgeCount: edgeCount
+  };
+
+  if (typeof module !== "undefined" && module.exports) { module.exports = API; }
+  root.BedsModel = API;
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+</script>
+<script>
+(function () {
+  "use strict";
+  var START = [[0.0, 0.0, 0.0], [4600.0, 0.0, 0.0], [4600.0, -4600.0, 0.0], [0.0, -4600.0, 0.0]];
+  var STEP = 500.0;
+  var FRAME_B64 = "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ACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUggAAgAAkkIAEAAAkBQCgAAAgKQQAAQAACSFACAAACApBAABAABJIQAIAABICgFAAABAUs87AGvWrFm5cmVgYCACgAAAwIvleQeA7gB+AQEICgoKDw+Pjo5GAABABmwiPacAJCQkREdHh4eH/wKWgBAAAJAKAvCvAHh5eQUGBoaFhXUTgObm5mcMwHfffccCwBrAf9ZoAAD0On4i0fTnA/Ddd989YwCam5sbGxv37NmjGoCYmJiwsLAXfQlIbQCKi4uFAJw6depHB0BogPhHAQDQs/jp/+MC0NbWphqA4uLiX1gAaBO4JwOABgBAL+JnUfcBePz48VdffdVVAE6dOnX06NGDBw92FYDw8PCAgABPT09nZ+cXNwABAQHdBODgwYNCAG7evHn//v0fFAA0AABeBMIgUg3A999/300Abt68yQegubn5lxoAGxsbFgB+E3jTpk3FxcVlZWVdBYDdAXz66adffPHFV1999fjx42+++ebbb7/97rvvvv/+ez4AXd0EEPEPBwDg+RCnj4JdodL0Z3cA33777TfffPP48WNaAvr0008fPnyoegfAB6CsrIz2ANLS0oQA9OgS0BtvvPHmm2+yAGhoaKgNAH8H0FUA6uvr1S4B3b1796OPPuoqAP/1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";
+  var B = BedsModel;
+
+  
+  
+  var SNAP_STEP = 50;
+  
+  
+  var syncUiFlags = null;
+  
+  
+  var applyModeUi = null;
+  
+  
+  var squareFlagGet = null, squareFlagSet = null;
+  
+  
+  var seedGet = null, seedSetHook = null, seedBedsUi = null;
+
+  var state = {
+    corners: START.map(function (p) { return p.slice(); }),
+    frac: 0.5,
+    show: { grid: true, zones: false, plants: true, plabels: false, buildings: true, labels: false, dbg: false },
+    autozoom: true,
+    manual: true,
+    snap: true,
+    
+    
+    ruler: true,
+    rot: 0,
+    
+    
+    fitView: true,
+    
+    
+    
+    
+    lock0: true,
+    lock1: true
+  };
+
+  
+  
+  
+  
+  var UU_PER_MORGEN = 22500000;
+  var UU_PER_CP = 5290000;
+  
+  var EXT_COST_BASE = 3500000;
+  var AREA_UNITS = [
+    { id: "cp", name: "CP", div: UU_PER_CP,
+      tip: "A Corpse Pit is the undisputed golden measuring tool in the game, " +
+        "a square building with sides of 2300u, or 23m and an area of 5.29M uu or about " +
+        "0.2351 Morgen.",
+      text: function (a) { return (a / UU_PER_CP).toFixed(2) + " CP"; } },
+    { id: "uu", name: "uu", div: 1,
+      tip: "Default Unreal Engine unit 'u' for length dimension equals 1 cm. " +
+        "A uu is a sqcm.",
+      text: function (a) { return Math.round(a) + " uu"; } },
+    { id: "morgen", name: "Morgen", div: UU_PER_MORGEN,
+      tip: "A Morgen has many historical definitions but in this game its " +
+        "22.5M uu exactly or about 2,250 sqm or about 24 thousand sqft.",
+      text: function (a) { return (a / UU_PER_MORGEN).toFixed(3) + " Morgen"; } }
+  ];
+  var areaUnit = 0;     
+
+  
+  document.getElementById("status").addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.className && String(t.className).indexOf("unitpick") >= 0) {
+      areaUnit = (areaUnit + 1) % AREA_UNITS.length;
+      if (last) { updateStatus(last); }
+    }
+  });
+
+  var svg = document.getElementById("svg");
+  var view = null;      
+  var W = 900, H = 868, PAD = 40;   
+  var FIXED_S = 0.22;   
+  var M = null;     
+
+  function bbox(pts) {
+    var b = { minx: 1e30, maxx: -1e30, miny: 1e30, maxy: -1e30 };
+    pts.forEach(function (p) {
+      b.minx = Math.min(b.minx, p[0]); b.maxx = Math.max(b.maxx, p[0]);
+      b.miny = Math.min(b.miny, p[1]); b.maxy = Math.max(b.maxy, p[1]);
+    });
+    return b;
+  }
+
+  
+  
+  
+  
+  
+  var stageEl = document.querySelector(".stage");
+  function stageRect() {
+    var w = (stageEl && stageEl.clientWidth) || 900;
+    var h = (stageEl && stageEl.clientHeight) || 868;
+    return { w: w, h: h };
+  }
+
+  function layout() {
+    if (state.autozoom) {
+      var r = stageRect();
+      
+      
+      
+      
+      var k = Math.min(r.w / 900, r.h / 868) || 1;
+      W = Math.round(r.w / k);
+      H = Math.round(r.h / k);
+      return;
+    }
+    var ex = view.maxx - view.minx, ey = view.maxy - view.miny;
+    
+    if (state.rot & 1) {
+      W = Math.ceil(ex * FIXED_S + 2 * PAD);
+      H = Math.ceil(ey * FIXED_S + 2 * PAD);
+    } else {
+      W = Math.ceil(ey * FIXED_S + 2 * PAD);
+      H = Math.ceil(ex * FIXED_S + 2 * PAD);
+    }
+  }
+
+  function metrics() {
+    
+    
+    var w = Math.max(view.maxy - view.miny, 1e-6);   
+    var h = Math.max(view.maxx - view.minx, 1e-6);   
+    
+    
+    
+    
+    var s;
+    if (!state.autozoom) { s = FIXED_S; }
+    else if (state.rot & 1) { s = Math.min(W / h, H / w); }
+    else { s = Math.min(W / w, H / h); }
+    
+    
+    return { s: s, w: w, h: h, ox: (W - w * s) / 2, oy: (H - h * s) / 2 };
+  }
+
+  function relayout() { layout(); M = metrics(); }
+
+  
+  
+  function pxPerUnit() {
+    var w = 0;
+    try { w = svg.getBoundingClientRect().width; } catch (e) { w = 0; }
+    return (w > 0 && W > 0) ? w / W : 1;
+  }
+
+  
+  
+  
+  function rulerGeom() {
+    var b = bbox(state.corners.concat([[0, 0, 0]]));
+    var kpx = (M && M.s > 0 ? M.s : 0.15) * pxPerUnit();   
+    if (!(kpx > 1e-6)) { kpx = 0.15; }
+    return { b: b, pad: 50 / kpx, step: 25 / kpx };
+  }
+
+  function fitView() {
+    var pts = state.corners.concat([[0, 0, 0]]);
+    var b = bbox(pts);
+    var w = Math.max(b.maxx - b.minx, 600), h = Math.max(b.maxy - b.miny, 600);
+    var m = 0.12 * Math.max(w, h);
+    view = { minx: b.minx - m, maxx: b.maxx + m, miny: b.miny - m, maxy: b.maxy + m };
+    if (state.manual && state.ruler) {
+      var rg = rulerGeom();
+      view.maxx = Math.max(view.maxx, b.maxx + rg.pad + 6.6 * rg.step);
+      view.maxy = Math.max(view.maxy, b.maxy + rg.pad + 6.6 * rg.step);
+    }
+    relayout();
+  }
+
+  
+  
+  
+  
+  function autoFit() {
+    if (state.fitView) { fitView(); } else { relayout(); }
+  }
+
+  
+  function sh(y) { return M.ox + (view.maxy - y) * M.s; }   
+  function sv(x) { return M.oy + (x - view.minx) * M.s; }   
+  function sx(p) { return sh(p[1]); }
+  function sy(p) { return sv(p[0]); }
+  function toWorld(px, py) {
+    return [
+      (py - M.oy) / M.s + view.minx,
+      view.maxy - (px - M.ox) / M.s
+    ];
+  }
+
+  function poly(pts, attrs) {
+    if (!pts || pts.length < 2) { return ""; }
+    var d = pts.map(function (p) { return sx(p).toFixed(1) + "," + sy(p).toFixed(1); }).join(" ");
+    var a = "";
+    for (var k in attrs) { if (attrs[k] !== null && attrs[k] !== undefined) { a += " " + k + '="' + attrs[k] + '"'; } }
+    return "<polygon points=\"" + d + "\"" + a + "/>";
+  }
+  function text(p, s, colour, dx, dy, size) {
+    return "<text x=\"" + (sx(p) + dx).toFixed(1) + "\" y=\"" + (sy(p) + dy).toFixed(1) +
+      "\" class=\"hlabel\" fill=\"" + colour + "\" font-size=\"" + (size || 11.5) + "\">" + s + "</text>";
+  }
+
+  
+  
+  
+  function textRot(p, s, colour, dx, dy, size, deg) {
+    var x = (sx(p) + dx).toFixed(1), y = (sy(p) + dy).toFixed(1);
+    return "<text x=\"" + x + "\" y=\"" + y + "\" transform=\"rotate(" + deg + " " + x + " " + y + ")\"" +
+      " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"hlabel\" fill=\"" + colour +
+      "\" paint-order=\"stroke\" stroke=\"var(--bg)\" stroke-width=\"3\"" +
+      " stroke-linejoin=\"round\" font-size=\"" + (size || 11.5) + "\">" + s + "</text>";
+  }
+
+  
+  
+  
+  
+  
+  
+  function frameMask(id, p, dir, halfAlong, halfAcross) {
+    
+    
+    var ax = -dir[1], ay = dir[0];
+    var nx = -dir[0], ny = -dir[1];
+    var a = halfAlong * M.s, c = halfAcross * M.s;
+    var ox = sx(p) - ax * a - nx * c;
+    var oy = sy(p) - ay * a - ny * c;
+    var m = "matrix(" + (2 * a * ax).toFixed(3) + " " + (2 * a * ay).toFixed(3) + " " +
+            (2 * c * nx).toFixed(3) + " " + (2 * c * ny).toFixed(3) + " " +
+            ox.toFixed(2) + " " + oy.toFixed(2) + ")";
+    
+    
+    
+    
+    
+    return "<mask id=\"" + id + "\" style=\"mask-type:luminance\">" +
+      "<image href=\"data:image/png;base64," + FRAME_B64 + "\" x=\"0\" y=\"0\" " +
+      "width=\"1\" height=\"1\" preserveAspectRatio=\"none\" transform=\"" + m + "\"/></mask>";
+  }
+
+  
+  
+  
+  var pendingGridLabels = [];
+
+  
+  
+  
+  
+  
+  
+  
+  var compassText = [];
+
+  function compassLabelsSvg() {
+    var txt = [], cx = W / 2, cy = H / 2;
+    for (var i = 0; i < compassText.length; i++) {
+      var c = compassText[i], p = rotScreen(c.x, c.y);
+      var q = rotScreen(cx + c.dx, cy + c.dy);
+      var dx = q[0] - cx, dy = q[1] - cy;        
+      var len = Math.hypot(dx, dy) || 1;
+      dx /= len; dy /= len;
+      
+      
+      
+      
+      p = [Math.min(W - 12, Math.max(12, p[0])), Math.min(H - 12, Math.max(12, p[1]))];
+      
+      var tx = dx > 1e-9 ? (W - 12 - p[0]) / dx : (dx < -1e-9 ? (12 - p[0]) / dx : Infinity);
+      var ty = dy > 1e-9 ? (H - 12 - p[1]) / dy : (dy < -1e-9 ? (12 - p[1]) / dy : Infinity);
+      var t = Math.max(0, Math.min(tx, ty));
+      var x0 = p[0] + dx * t, y0 = p[1] + dy * t;  
+      var bx = x0 - dx * 12, by = y0 - dy * 12;    
+      var px = -dy * 6, py = dx * 6;
+      txt.push("<path d=\"M " + x0.toFixed(1) + " " + y0.toFixed(1) +
+        " L " + (bx + px).toFixed(1) + " " + (by + py).toFixed(1) +
+        " L " + (bx - px).toFixed(1) + " " + (by - py).toFixed(1) +
+        " Z\" fill=\"var(--axis)\"/>");
+      
+      
+      var lx = Math.min(W - 34, Math.max(34, x0 - dx * 22));
+      var ly = Math.min(H - 12, Math.max(16, y0 - dy * 22));
+      txt.push("<text class=\"glabel\" text-anchor=\"middle\" x=\"" + lx.toFixed(1) +
+        "\" y=\"" + ly.toFixed(1) + "\" style=\"fill:#334155;font-weight:600\"" +
+        " paint-order=\"stroke\" stroke=\"#fff\" stroke-width=\"3\" stroke-linejoin=\"round\">" +
+        c.name + "</text>");
+    }
+    return txt.join("");
+  }
+
+  function gridLayer() {
+    var out = [];
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    var S = Math.max(W, H), half = S / 2, cx = W / 2, cy = H / 2;
+    var bx0 = cx - half, bx1 = cx + half, by0 = cy - half, by1 = cy + half;
+    var yA = view.maxy - (bx0 - M.ox) / M.s;   
+    var yB = view.maxy - (bx1 - M.ox) / M.s;   
+    var xA = view.minx + (by0 - M.oy) / M.s;   
+    var xB = view.minx + (by1 - M.oy) / M.s;   
+    var x0 = Math.ceil(Math.min(xA, xB) / STEP) * STEP;
+    var xEnd = Math.max(xA, xB);
+    var y0 = Math.ceil(Math.min(yA, yB) / STEP) * STEP;
+    var yEnd = Math.max(yA, yB);
+    var majorStep = Math.abs(STEP * 2);
+    var clamp = function (v, lo, hi) { return Math.min(hi, Math.max(lo, v)); };
+    
+    
+    var labStride = 1;
+    while (majorStep * M.s * labStride < 36) { labStride *= 2; }
+    var numbered = function (v) {
+      return Math.abs(Math.round(v / majorStep) % labStride) < 1e-9;
+    };
+    for (var x = x0; x <= xEnd; x += STEP) {
+      var isAxis = Math.abs(x) < 1e-9;
+      var major = Math.abs(Math.round(x) % majorStep) < 1e-9;
+      out.push("<line x1=\"" + bx0.toFixed(1) + "\" y1=\"" + sv(x).toFixed(1) +
+        "\" x2=\"" + bx1.toFixed(1) + "\" y2=\"" + sv(x).toFixed(1) +
+        "\" stroke=\"" + (isAxis ? "var(--axis)" : major ? "var(--grid10)" : "var(--grid)") +
+        "\" stroke-width=\"" + (isAxis ? 1.6 : 1) + "\"/>");
+      
+      if (major && numbered(x)) {
+        pendingGridLabels.push({ kind: "x", v: Math.round(x), at: sv(x) });
+      }
+    }
+    for (var y = y0; y <= yEnd; y += STEP) {
+      var isAxisY = Math.abs(y) < 1e-9;
+      var majorY = Math.abs(Math.round(y) % majorStep) < 1e-9;
+      out.push("<line x1=\"" + sh(y).toFixed(1) + "\" y1=\"" + by0.toFixed(1) +
+        "\" x2=\"" + sh(y).toFixed(1) + "\" y2=\"" + by1.toFixed(1) +
+        "\" stroke=\"" + (isAxisY ? "var(--axis)" : majorY ? "var(--grid10)" : "var(--grid)") +
+        "\" stroke-width=\"" + (isAxisY ? 1.6 : 1) + "\"/>");
+      if (majorY && numbered(y)) {
+        pendingGridLabels.push({ kind: "y", v: Math.round(y), at: sh(y) });
+      }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    compassText.push({ name: "North", x: W - 12, y: sv(0), dx: 1, dy: 0 });
+    compassText.push({ name: "East", x: sh(0), y: H - 12, dx: 0, dy: 1 });
+    return out.join("");
+  }
+
+  
+  
+  function rotScreen(x, y) {
+    if (!state.rot) { return [x, y]; }
+    var cx = W / 2, cy = H / 2, dx = x - cx, dy = y - cy;
+    if (state.rot === 1) { return [cx + dy, cy - dx]; }
+    if (state.rot === 2) { return [cx - dx, cy - dy]; }
+    return [cx - dy, cy + dx];
+  }
+
+  
+  
+  
+  function gridLabels() {
+    if (!pendingGridLabels.length) { return ""; }
+    var halo = " paint-order=\"stroke\" stroke=\"#fff\" stroke-width=\"3\" stroke-linejoin=\"round\"";
+    var txt = [];
+    for (var i = 0; i < pendingGridLabels.length; i++) {
+      var L = pendingGridLabels[i];
+      
+      
+      var q = (L.kind === "x") ? rotScreen(0, L.at) : rotScreen(L.at, 0);
+      var horiz = (L.kind === "x") ? !(state.rot & 1) : !!(state.rot & 1);
+      if (horiz) {
+        txt.push("<text class=\"glabel\" text-anchor=\"start\" x=\"7\" y=\"" +
+          Math.min(H - 6, Math.max(12, q[1] + 4)).toFixed(1) + "\"" + halo + ">" +
+          L.v + "</text>");
+      } else {
+        txt.push("<text class=\"glabel\" text-anchor=\"middle\" x=\"" +
+          Math.min(W - 16, Math.max(16, q[0])).toFixed(1) + "\" y=\"" +
+          (H - 7).toFixed(1) + "\"" + halo + ">" + L.v + "</text>");
+      }
+    }
+    return txt.join("");
+  }
+
+  function handle(p, i) {
+    var x = sx(p), y = sy(p);
+    var cx = x.toFixed(1), cy = y.toFixed(1);
+    
+    
+    
+    var square = (i === 1 && state.lock1);
+    var mark = square
+      ? "<rect x=\"" + (x - 5.5).toFixed(1) + "\" y=\"" + (y - 5.5).toFixed(1) +
+        "\" width=\"11\" height=\"11\" fill=\"#fff\" stroke=\"var(--plot)\" stroke-width=\"2.2\"/>"
+      : "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"7\" fill=\"#fff\" stroke=\"var(--plot)\" stroke-width=\"2.2\"/>";
+    return "<g class=\"handle\"" + (square ? " data-axis=\"1\"" : "") + " data-i=\"" + i + "\">" +
+      "<circle cx=\"" + cx + "\" cy=\"" + cy + "\" r=\"18\" fill=\"transparent\"/>" + mark + "</g>";
+  }
+
+  function cornerLabel(p, i) {
+    return text(p, "P" + i, "#334155", 10, -10, 12.5);
+  }
+
+  
+  function labelAt(pts, s, colour, size) {
+    
+    
+    
+    var n = pts.length;
+    if (n > 1 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1]) { n--; }
+    var cx = 0, cy = 0;
+    for (var i = 0; i < n; i++) { cx += pts[i][0]; cy += pts[i][1]; }
+    cx /= n; cy /= n;
+    return "<text x=\"" + sx([cx, cy]).toFixed(1) + "\" y=\"" + sy([cx, cy]).toFixed(1) +
+      "\" text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"hlabel\" fill=\"" +
+      colour + "\" font-size=\"" + (size || 13) + "\" font-weight=\"600\">" + s + "</text>";
+  }
+
+  var last = null;
+  var syncPreset = null;   
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  var FRAC_SWEEP_N = 200;
+  var FRAC_CACHE_MAX = 64;
+  var fracRangeCache = new Map();
+  var fracTimer = 0;
+  var lastFit = null;            
+
+  function shapeKeyOf(fit) {
+    var parts = [], i;
+    for (i = 0; i < fit.quad.length; i++) {
+      parts.push(fit.quad[i][0].toFixed(2) + "," + fit.quad[i][1].toFixed(2));
+    }
+    parts.push("|");
+    for (i = 0; i < fit.profile.length; i++) {
+      parts.push(fit.profile[i][0].toFixed(2) + "," + fit.profile[i][1].toFixed(2));
+    }
+    return parts.join(";");
+  }
+
+  function fracRangePeek(fit) {
+    if (!fit || !fit.quad) { return null; }
+    return fracRangeCache.get(shapeKeyOf(fit)) || null;
+  }
+
+  
+  function endpointRange(fit) {
+    return [0.0, 1.0].map(function (f) {
+      var b = B.buildBeds(fit.quad, f, fit.profile);
+      if (!b || !b.ok) { return null; }
+      var pg = B.plantGrid(b, fit.quad, fit.profile);
+      return pg ? pg.count : null;
+    });
+  }
+
+  function fracRange(fit) {
+    var cached = fracRangePeek(fit);
+    if (cached) { return cached; }
+    var xs = [], i;
+    for (i = 0; i < FRAC_SWEEP_N; i++) {
+      var f = i / FRAC_SWEEP_N;
+      var b = B.buildBeds(fit.quad, f, fit.profile);
+      var pg = B.plantGrid((b && b.ok) ? b : {}, fit.quad, fit.profile);
+      if (pg) { xs.push(pg.count); }
+    }
+    if (!xs.length) { return null; }
+    xs.sort(function (a, b) { return a - b; });
+    var n = xs.length;
+    
+    
+    var res = [xs[0], xs[n - 1],
+               xs[Math.min(n - 1, Math.floor(0.05 * n))],
+               xs[Math.min(n - 1, Math.floor(0.95 * n))]];
+    fracRangeCache.set(shapeKeyOf(fit), res);
+    if (fracRangeCache.size > FRAC_CACHE_MAX) {
+      fracRangeCache.delete(fracRangeCache.keys().next().value);
+    }
+    return res;
+  }
+
+  
+  
+  
+  
+  function scheduleFracRange(fit) {
+    if (fracTimer) { clearTimeout(fracTimer); }
+    var key = shapeKeyOf(fit);
+    fracTimer = setTimeout(function () {
+      fracTimer = 0;
+      if (!lastFit || shapeKeyOf(lastFit) !== key) { return; }   
+      fracRange(fit);          
+      render();                
+    }, 250);
+  }
+
+  function compute() {
+    var corners = state.corners;
+    var wind = B.winding(corners);
+    var geomOk = B.isSimpleQuad(corners);
+    if (wind >= 0) {
+      return {
+        corners: corners, wind: wind, geomOk: geomOk, border: null,
+        preview: null, aDecal: null, aDecalTrace: {},
+        fit: { ok: false, reason: "corner order is reversed", trace: { rejected: [] } },
+        houses: { primaryShape: null, secondaryShape: null }, beds: null,
+        shed: null
+      };
+    }
+    if (!geomOk) {
+      return {
+        corners: corners, wind: wind, geomOk: false, border: null,
+        preview: null, aDecal: null, aDecalTrace: {},
+        fit: { ok: false, reason: "plot is self-intersecting",
+               trace: { rejected: [] } },
+        houses: { primaryShape: null, secondaryShape: null }, beds: null,
+        shed: null
+      };
+    }
+    var closed = corners.concat([corners[0]]);
+    var border = B.engineBorder(closed);
+    var houses = B.fitHouses(corners, border);
+    
+    
+    
+    var preview = B.buildExtensionForPlot(corners, border);
+    
+    
+    
+    
+    var aDecalTrace = {};
+    var aDecal = B.previewA(corners, border, { trace: aDecalTrace });
+    
+    
+    
+    
+    
+    
+    var secTrace = {};
+    var secondary = null;
+    if (aDecal) {
+      secondary = B.previewSecondary(corners, border, aDecal.origin,
+                                     aDecal.dir, secTrace);
+    } else {
+      
+      
+      
+      
+      
+      secTrace.reason = "A dropped \u2014 no preview element, so no B either";
+      secTrace.aDropped = true;
+    }
+    
+    
+    
+    
+    
+    
+    var bPartWontFit = secondary === null;
+    
+    
+    
+    
+    
+    
+    var aFullFacade = false;
+    if (bPartWontFit && houses.stepped) {
+      houses = B.fitHouses(corners, border, { fullFacade: true });
+      aFullFacade = true;
+    }
+    var fit = preview;
+    
+    
+    
+    if (!aDecal) {
+      
+      
+      fit = { ok: false, reason: "A dropped \u2014 no preview element, so no backFacade",
+              trace: (fit && fit.trace) || null };
+    } else if (fit && fit.ok && !houses.houseShape) {
+      fit = { ok: false, reason: "no house fit - no backyard", trace: fit.trace };
+    }
+    
+    
+    
+    
+    
+    
+    var extGate = null;
+    if (fit && fit.ok) {
+      extGate = B.extensionClearance(fit.profile, fit.quad);
+      if (!extGate.ok) {
+        fit = { ok: false, reason: "Plot too small for backyard extension.",
+                trace: fit.trace, gate: extGate };
+      }
+    }
+    var beds = null, plants = null, plantsAt = null, shed = null, shedStandIn = false;
+    if (fit.ok) {
+      beds = B.buildBeds(fit.quad, state.frac, fit.profile);
+      
+      
+      
+      plants = B.plantGrid((beds && beds.ok) ? beds : {}, fit.quad, fit.profile);
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      if (beds && beds.ok) {
+        shed = B.shedMesh(fit.profile, fit.quad);
+      } else {
+        shed = B.shedAt(aDecal.origin, aDecal.dir);
+        shedStandIn = true;
+      }
+      if (beds && beds.ok) {
+        
+        
+        
+        
+        
+        
+        lastFit = fit;
+        var known = fracRangePeek(fit);
+        if (known) {
+          plantsAt = known;
+        } else {
+          plantsAt = endpointRange(fit);
+          if (!drag && !histEdge) { scheduleFracRange(fit); }
+        }
+      }
+    }
+    return { corners: corners, wind: wind, geomOk: true, border: border,
+             preview: preview, fit: fit, aDecal: aDecal, aDecalTrace: aDecalTrace,
+             houses: houses, secondary: secondary, secTrace: secTrace,
+             bPartWontFit: bPartWontFit, aFullFacade: aFullFacade,
+             beds: beds, plants: plants, plantsAt: plantsAt, shed: shed,
+             shedStandIn: shedStandIn };
+  }
+
+  
+  
+  function fmtCoord(v) {
+    var q = Math.round(v * 10) / 10;
+    return (q % 1 === 0) ? String(q) : q.toFixed(1);
+  }
+
+  
+  
+  
+  
+  
+  
+  var QUANTA = [[2300, "CP"], [1200, "F"], [1100, "H"], [400, "S"]];
+  var FRAC_MIN = 800;      
+  var MAX_COEF = 12;       
+
+  
+  
+  function quantTerms(v) {
+    var list = [], i, k;
+    for (i = 0; i < QUANTA.length; i++) {
+      var Q = QUANTA[i][0], name = QUANTA[i][1];
+      var kMax = Math.min(MAX_COEF, Math.floor((v + 1e-6) / Q));
+      for (k = 1; k <= kMax; k++) {
+        list.push({ val: k * Q, cost: k, coef: k, text: k + name });
+      }
+    }
+    return list;
+  }
+
+  
+  function bestForm(v) {
+    var list = quantTerms(v), i, j;
+    var single = null, best = null;
+    for (i = 0; i < list.length; i++) {
+      if (Math.abs(list[i].val - v) > 1e-6) { continue; }
+      if (!single || list[i].cost < single.cost) { single = list[i]; }
+    }
+    for (i = 0; i < list.length; i++) {
+      for (j = i; j < list.length; j++) {
+        if (Math.abs(list[i].val + list[j].val - v) > 1e-6) { continue; }
+        var a = list[i].val >= list[j].val ? list[i] : list[j];
+        var b = list[i].val >= list[j].val ? list[j] : list[i];
+        var cost = a.cost + b.cost;
+        var text = a.text + b.text;
+        var fits = !best || cost < best.cost ||
+          (cost === best.cost && a.val > best.first + 1e-9) ||
+          (cost === best.cost && Math.abs(a.val - best.first) < 1e-9 && text.length < best.text.length);
+        if (fits) {
+          best = { cost: cost, first: a.val, text: text, terms: 2,
+                   maxCoef: Math.max(a.coef, b.coef) };
+        }
+      }
+    }
+    if (single && (!best || single.cost <= best.cost)) {
+      return { text: single.text, cost: single.cost, terms: 1, maxCoef: single.coef };
+    }
+    return best;
+  }
+
+  
+  function cleanLabel(v) {
+    var f = bestForm(v);
+    return f ? f.text : null;
+  }
+
+  
+  
+  
+  
+  
+  
+  
+  
+  function halfCpLabel(v) {
+    var k = v / (QUANTA[0][0] / 2);        
+    var m = Math.round(k);
+    if (m < 1 || m > 2 * MAX_COEF || (m % 2) === 0) { return null; }
+    if (Math.abs(k - m) > 1e-6) { return null; }
+    return (m / 2).toFixed(1) + QUANTA[0][1];
+  }
+
+  
+  
+  
+  function fracLabel(v) {
+    var best = null, n, inner, cand;
+    for (n = 2; n <= 4; n++) {
+      inner = bestForm(v * n);
+      if (!inner || inner.maxCoef > MAX_COEF) { continue; }
+      cand = { n: n, text: "1/" + n + " of " + inner.text, terms: inner.terms };
+      var fits = !best || cand.terms < best.terms ||
+        (cand.terms === best.terms && cand.n < best.n) ||
+        (cand.terms === best.terms && cand.n === best.n && cand.text.length < best.text.length);
+      if (fits) { best = cand; }
+    }
+    return best ? best.text : null;
+  }
+
+  function quantumLabel(v, allowFrac) {
+    if (!(v > 0)) { return null; }
+    
+    
+    
+    
+    var clean = cleanLabel(v);
+    if (clean) { return clean; }
+    var half = halfCpLabel(v);
+    if (half) { return half; }
+    if (!allowFrac || v < FRAC_MIN - 1e-6) { return null; }
+    return fracLabel(v);
+  }
+
+  
+  
+  function insidePoly(pts, p) {
+    var i, j, inside = false;
+    for (i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      var a = pts[i], b = pts[j];
+      var ex = b[0] - a[0], ey = b[1] - a[1];
+      var len2 = ex * ex + ey * ey;
+      if (len2 > 1e-9) {
+        var t = ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / len2;
+        t = Math.max(0, Math.min(1, t));
+        var ddx = p[0] - (a[0] + t * ex), ddy = p[1] - (a[1] + t * ey);
+        if (ddx * ddx + ddy * ddy < 1e-6) { return false; }
+      }
+      if (((a[1] > p[1]) !== (b[1] > p[1])) &&
+          (p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0])) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  
+  
+  function syncUrl() {
+    var list = state.corners.slice(0, 4).map(function (p) {
+      return fmtCoord(p[0]) + "," + fmtCoord(p[1]);
+    }).join(",");
+    var want = "?c=" + list;
+    if (location.search === want && !location.hash) { return; }
+    try { history.replaceState(null, "", want); } catch (e) {   }
+  }
+
+  
+  
+  
+  function uprightText(html, c) {
+    if (!c) { return html; }
+    return html.replace(/<text\b([^>]*)>/g, function (m, attrs) {
+      var tm = /\btransform="rotate\(([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)"/.exec(attrs);
+      if (tm) {
+        return m.replace(tm[0], 'transform="rotate(' + (parseFloat(tm[1]) + c) + ' ' +
+          tm[2] + ' ' + tm[3] + ')"');
+      }
+      var xm = /\bx="([-\d.]+)"/.exec(attrs);
+      var ym = /\by="([-\d.]+)"/.exec(attrs);
+      if (!xm || !ym) { return m; }
+      return "<text" + attrs + " transform=\"rotate(" + c + " " + xm[1] + " " + ym[1] + ")\">";
+    });
+  }
+
+  function render() {
+    var r = compute();
+    last = r;
+    if (syncPreset) { syncPreset(); }
+    syncUrl();
+    var out = [];
+
+    pendingGridLabels.length = 0;
+    compassText.length = 0;
+    if (state.show.grid) { out.push(gridLayer()); }
+
+    out.push(poly(r.corners.concat([r.corners[0]]),
+      { fill: "none", stroke: "var(--plot)", "stroke-width": 2.2 }));
+
+    if (state.show.buildings) {
+      
+      
+      
+      
+      
+      
+      var aO = null, aD = null;
+      if (r.aDecal) { aO = r.aDecal.origin; aD = r.aDecal.dir; }
+      if (aO) {
+        var aPrev = B.rectOutline(aO, aD, 600, 350);
+        out.push("<defs>" + frameMask("frameA", aO, aD, 600, 350) + "</defs>");
+        out.push(poly(aPrev,
+          { fill: "var(--house)", "fill-opacity": 0.42, stroke: "none",
+            mask: "url(#frameA)" }));
+        if (state.show.labels) { out.push(labelAt(aPrev, "A", "#5b7290", 14)); }
+      }
+    }
+
+    if (state.show.buildings && r.secondary) {
+      
+      
+      
+      
+      
+      var bO = r.secondary.origin, bD = r.secondary.dir;
+      var bPrev = B.rectOutline(bO, bD, 400, 200);
+      out.push("<defs>" + frameMask("frameB", bO, bD, 400, 200) + "</defs>");
+      out.push(poly(bPrev,
+        { fill: "var(--house)", "fill-opacity": 0.42, stroke: "none",
+          mask: "url(#frameB)" }));
+      out.push(poly([[r.secondary.origin[0] - 2, r.secondary.origin[1] - 2],
+                     [r.secondary.origin[0] + 2, r.secondary.origin[1] - 2],
+                     [r.secondary.origin[0] + 2, r.secondary.origin[1] + 2],
+                     [r.secondary.origin[0] - 2, r.secondary.origin[1] + 2]],
+        { fill: "var(--house)", stroke: "none" }));
+      if (state.show.labels) { out.push(labelAt(bPrev, "B", "#5b7290", 13)); }
+    }
+
+    if (r.beds && r.beds.ok && state.show.zones) {
+      ["bed1", "bed2", "bed3"].forEach(function (k, i) {
+        var cols = ["var(--b1)", "var(--b2)", "var(--b3)"];
+        var fills = ["#fee2e2", "#dcfce7", "#dbeafe"];
+        out.push(poly(r.beds[k], { fill: fills[i], "fill-opacity": 0.85,
+          stroke: cols[i], "stroke-width": 2 }));
+        var p = r.beds[k];
+        if (p && p.length > 2) {
+          var c = [(p[0][0] + p[1][0] + p[2][0]) / 3, (p[0][1] + p[1][1] + p[2][1]) / 3];
+          out.push(text(c, String(i + 1), cols[i], -3, 4, 12));
+        }
+      });
+    }
+    if (r.beds && r.beds.ok && r.beds.shed && state.show.zones) {
+      out.push(poly(r.beds.shed, { fill: "#fef9c3", stroke: "var(--shed)",
+        "stroke-width": 1.6, "stroke-dasharray": "4 3" }));
+      out.push(text(r.beds.shed[0], "shed area", "#a16207", 5, 13, 10.5));
+    }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    if (r.fit.ok) {
+      var cutRing = (r.fit.profile && r.fit.profile.length > 1) ? r.fit.profile : r.fit.quad;
+      if (cutRing && cutRing.length > 1) {
+        out.push(poly([cutRing[0], cutRing[1]],
+          { fill: "none", stroke: "var(--plot)", "stroke-width": 2.2 }));
+      }
+    }
+    
+    
+    var cellFrame = function () {
+      var u = B.unit2(r.fit.quad[2][0] - r.fit.quad[1][0],
+                      r.fit.quad[2][1] - r.fit.quad[1][1]);
+      
+      var rot = Math.atan2(u[0], -u[1]) * 180 / Math.PI;
+      if (rot > 90) { rot -= 180; }
+      if (rot <= -90) { rot += 180; }
+      return { e1x: u[1], e1y: -u[0], e2x: u[0], e2y: u[1], rot: rot };
+    };
+    var cellSquare = function (c, fr, hs) {
+      return [
+        [c[0] + hs * (fr.e1x + fr.e2x), c[1] + hs * (fr.e1y + fr.e2y)],
+        [c[0] + hs * (-fr.e1x + fr.e2x), c[1] + hs * (-fr.e1y + fr.e2y)],
+        [c[0] + hs * (-fr.e1x - fr.e2x), c[1] + hs * (-fr.e1y - fr.e2y)],
+        [c[0] + hs * (fr.e1x - fr.e2x), c[1] + hs * (fr.e1y - fr.e2y)]
+      ];
+    };
+
+    if (r.plants && r.plants.count && state.show.plants) {
+      var dots = [];
+      if (state.show.plabels) {
+        
+        
+        
+        var rotDeg = 0;
+        if (r.fit.ok) {
+          var fr = cellFrame();
+          rotDeg = fr.rot;
+          var d = [];
+          for (var ci = 0; ci < r.plants.points.length; ci++) {
+            var q0 = r.plants.points[ci];
+            var qc = cellSquare(q0, fr, 50.0);
+            d.push("M" + sx(qc[0]).toFixed(1) + " " + sy(qc[0]).toFixed(1) +
+                   "L" + sx(qc[1]).toFixed(1) + " " + sy(qc[1]).toFixed(1) +
+                   "L" + sx(qc[2]).toFixed(1) + " " + sy(qc[2]).toFixed(1) +
+                   "L" + sx(qc[3]).toFixed(1) + " " + sy(qc[3]).toFixed(1) + "Z");
+          }
+          out.push("<path d=\"" + d.join("") + "\" fill=\"none\" stroke=\"var(--plant)\"" +
+            " stroke-opacity=\".3\" stroke-width=\"0.8\"/>");
+        }
+        for (var pi = 0; pi < r.plants.points.length; pi++) {
+          var pp = r.plants.points[pi];
+          var tx = sx(pp).toFixed(1), ty = sy(pp).toFixed(1);
+          dots.push("<text x=\"" + tx + "\" y=\"" + ty + "\" transform=\"rotate(" +
+            rotDeg.toFixed(2) + " " + tx + " " + ty + ")\"" +
+            " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"plabel\">" +
+            (pi + 1) + "</text>");
+        }
+      } else {
+        for (var pj = 0; pj < r.plants.points.length; pj++) {
+          var pq = r.plants.points[pj];
+          dots.push("<circle cx=\"" + sx(pq).toFixed(1) + "\" cy=\"" + sy(pq).toFixed(1) +
+            "\" r=\"1.7\" fill=\"var(--plant)\" fill-opacity=\".65\"/>");
+        }
+      }
+      out.push("<g>" + dots.join("") + "</g>");
+    }
+
+    
+    
+    if (r.shed && state.show.buildings) {
+      
+      
+      var sfr = cellFrame();
+      var sCell = cellSquare(r.shed.origin, sfr, 50.0);
+      out.push(poly(sCell.concat([sCell[0]]),
+        { fill: "none", stroke: "var(--plant)", "stroke-opacity": ".3",
+          "stroke-width": 0.8 }));
+      var stx = sx(r.shed.origin).toFixed(1), sty = sy(r.shed.origin).toFixed(1);
+      out.push("<text x=\"" + stx + "\" y=\"" + sty + "\" transform=\"rotate(" +
+        sfr.rot.toFixed(2) + " " + stx + " " + sty + ")\"" +
+        " text-anchor=\"middle\" dominant-baseline=\"middle\" class=\"plabel\">S</text>");
+    }
+
+    if (r.fit.ok && state.show.labels) {
+      
+      
+      
+      
+      var ring = (r.fit.profile && r.fit.profile.length > 3) ? r.fit.profile : r.fit.quad;
+      out.push(poly(ring.concat([ring[0]]),
+        { fill: "none", stroke: "var(--quad)", "stroke-width": 2.6 }));
+      var placed = [];
+      ["C0", "C1", "C2", "C3"].forEach(function (lab, i) {
+        var p = r.fit.quad[i];
+        if (!p) { return; }
+        for (var j = 0; j < placed.length; j++) {
+          if (Math.hypot(p[0] - placed[j][0], p[1] - placed[j][1]) < 0.5) { return; }
+        }
+        placed.push(p);
+        out.push(text(p, lab, "var(--quad)", 5, i < 2 ? -8 : 15, 12));
+      });
+    }
+
+    if (state.show.dbg && r.fit.ok) {
+      var tr = r.fit.trace;
+      if (tr.origin && tr.dir) {
+        out.push("<circle cx=\"" + sx(tr.origin).toFixed(1) + "\" cy=\"" +
+          sy(tr.origin).toFixed(1) + "\" r=\"3\" fill=\"var(--dbg)\"/>");
+      }
+      if (tr.Q) {
+        out.push("<circle cx=\"" + sx(tr.Q).toFixed(1) + "\" cy=\"" + sy(tr.Q).toFixed(1) +
+          "\" r=\"4\" fill=\"var(--dbg)\"/>" + text(tr.Q, "Q", "var(--dbg)", 6, -6, 11));
+      }
+      if (tr.A0) {
+        out.push("<circle cx=\"" + sx(tr.A0).toFixed(1) + "\" cy=\"" + sy(tr.A0).toFixed(1) +
+          "\" r=\"4\" fill=\"none\" stroke=\"var(--dbg)\" stroke-width=\"2\"/>" +
+          text(tr.A0, "A0", "var(--dbg)", 6, 13, 11));
+      }
+    }
+
+    
+    
+    var showRuler = state.manual && state.ruler;
+
+    for (var i = 0; i < 4; i++) {
+      
+      
+      
+      if (state.manual && (i !== 0 || !state.lock0)) { out.push(handle(r.corners[i], i)); }
+      
+      
+      if (state.show.labels || showRuler) { out.push(cornerLabel(r.corners[i], i)); }
+    }
+
+    
+    
+    
+    
+    if (showRuler) {
+      var rg = rulerGeom();
+      var yBase = rg.b.maxy + rg.pad;      
+      var xBase = rg.b.maxx + rg.pad;      
+      var i2, j2;
+      var fracOk = (function (c) {
+        for (var ci2 = 0; ci2 < 2; ci2++) {
+          var A = c[ci2], B = c[(ci2 + 1) % 4], D = c[(ci2 + 3) % 4];
+          var ux = B[0] - A[0], uy = B[1] - A[1];
+          var wx = D[0] - A[0], wy = D[1] - A[1];
+          var lu = Math.hypot(ux, uy), lw = Math.hypot(wx, wy);
+          if (lu < 1e-6 || lw < 1e-6) { return false; }
+          if (Math.abs(ux * wx + uy * wy) > 1e-9 * lu * lw) { return false; }
+        }
+        return true;
+      })(r.corners);
+
+      
+      
+      
+      var spansX = [], spansY = [];
+      var adjacent = function (a, b) {
+        var lo = Math.min(a, b), hi = Math.max(a, b);
+        return (lo === 0 && hi === 1) || (lo === 1 && hi === 2) ||
+               (lo === 2 && hi === 3) || (lo === 0 && hi === 3);
+      };
+      for (i2 = 0; i2 < 4; i2++) {
+        for (j2 = i2 + 1; j2 < 4; j2++) {
+          var cA = state.corners[i2], cB = state.corners[j2];
+          var isEdge = adjacent(i2, j2);
+          if (Math.abs(cB[0] - cA[0]) > 0.5) {
+            spansX.push({ lo: Math.min(cA[0], cB[0]), hi: Math.max(cA[0], cB[0]), edge: isEdge });
+          }
+          if (Math.abs(cB[1] - cA[1]) > 0.5) {
+            spansY.push({ lo: Math.min(cA[1], cB[1]), hi: Math.max(cA[1], cB[1]), edge: isEdge });
+          }
+        }
+      }
+      var axisKey = function (lo, hi) { return Math.round(lo * 10) + ":" + Math.round(hi * 10); };
+      
+      
+      var chain = function (list) {
+        if (!list.length) { return []; }
+        var vals = [], i;
+        for (i = 0; i < list.length; i++) { vals.push(list[i].lo, list[i].hi); }
+        vals.sort(function (a, b) { return a - b; });
+        var uniq = [];
+        for (i = 0; i < vals.length; i++) {
+          if (!uniq.length || Math.abs(uniq[uniq.length - 1] - vals[i]) > 0.5) { uniq.push(vals[i]); }
+        }
+        var chainKeys = {};
+        for (i = 0; i + 1 < uniq.length; i++) { chainKeys[axisKey(uniq[i], uniq[i + 1])] = 1; }
+        var res = [], seen = {}, k;
+        for (i = 0; i < list.length; i++) {
+          k = axisKey(list[i].lo, list[i].hi);
+          if (seen[k]) { continue; }
+          if (!list[i].edge && !chainKeys[k]) { continue; }
+          seen[k] = 1;
+          res.push(list[i]);
+        }
+        res.sort(function (a, b) { return a.lo - b.lo; });
+        return res;
+      };
+      var rowX = chain(spansX), rowY = chain(spansY);
+
+      var extLine = function (ax, ay, bx2, by2) {
+        
+        
+        var K2 = 60, k2, lastIn = -1;
+        for (k2 = 1; k2 < K2; k2++) {
+          var tt = k2 / K2;
+          if (insidePoly(r.corners, [ax + (bx2 - ax) * tt, ay + (by2 - ay) * tt])) { lastIn = tt; }
+        }
+        
+        
+        var t0 = lastIn < 0 ? 0 : lastIn + 1.5 / K2;
+        var sx0 = ax + (bx2 - ax) * t0, sy0 = ay + (by2 - ay) * t0;
+        out.push("<line x1=\"" + sx([sx0, sy0, 0]).toFixed(1) + "\" y1=\"" + sy([sx0, sy0, 0]).toFixed(1) +
+          "\" x2=\"" + sx([bx2, by2, 0]).toFixed(1) + "\" y2=\"" + sy([bx2, by2, 0]).toFixed(1) +
+          "\" stroke=\"#dc2626\" stroke-width=\"0.8\" stroke-opacity=\".5\"/>");
+      };
+      var tickAt = function (wx, wy, alongX) {
+        var tx = sx([wx, wy, 0]), ty = sy([wx, wy, 0]);
+        out.push("<line x1=\"" + (tx + (alongX ? -4.5 : 0)).toFixed(1) +
+          "\" y1=\"" + (ty + (alongX ? 0 : -4.5)).toFixed(1) +
+          "\" x2=\"" + (tx + (alongX ? 4.5 : 0)).toFixed(1) +
+          "\" y2=\"" + (ty + (alongX ? 0 : 4.5)).toFixed(1) +
+          "\" stroke=\"#dc2626\" stroke-width=\"1.4\"/>");
+      };
+      var dimLine = function (ax, ay, bx2, by2) {
+        out.push("<line x1=\"" + sx([ax, ay, 0]).toFixed(1) + "\" y1=\"" + sy([ax, ay, 0]).toFixed(1) +
+          "\" x2=\"" + sx([bx2, by2, 0]).toFixed(1) + "\" y2=\"" + sy([bx2, by2, 0]).toFixed(1) +
+          "\" stroke=\"#dc2626\" stroke-width=\"1.6\" stroke-dasharray=\"2 3\" stroke-linecap=\"round\"/>");
+      };
+      
+      var cornerAt = function (axis, v) {
+        for (var q2 = 0; q2 < 4; q2++) {
+          var val = axis === "x" ? state.corners[q2][0] : state.corners[q2][1];
+          if (Math.abs(val - v) < 0.5) { return state.corners[q2]; }
+        }
+        return null;
+      };
+
+      
+      
+      var packRows = function (list, gap) {
+        var order = list.slice().sort(function (a, b) { return (a.hi - a.lo) - (b.hi - b.lo); });
+        var rows = [], i, r, j;
+        for (i = 0; i < order.length; i++) {
+          var sp = order[i], placed = false;
+          for (r = 0; r < rows.length && !placed; r++) {
+            var clash = false;
+            for (j = 0; j < rows[r].length; j++) {
+              var q = rows[r][j];
+              
+              if (Math.min(q.hi, sp.hi) - Math.max(q.lo, sp.lo) > 0) { clash = true; break; }
+            }
+            if (!clash) { rows[r].push(sp); placed = true; }
+          }
+          if (!placed) { rows.push([sp]); }
+        }
+        return rows;
+      };
+      var bandSpan = Math.max(rg.b.maxx - rg.b.minx, rg.b.maxy - rg.b.miny, 900);
+      var rowsX = packRows(rowX, 0.03 * bandSpan);
+      var rowsY = packRows(rowY, 0.03 * bandSpan);
+
+      var ri, rk, row, yRow, xRow, pA2, pB2, span, q2b;
+      for (ri = 0; ri < rowsX.length; ri++) {
+        for (rk = 0; rk < rowsX[ri].length; rk++) {
+        row = rowsX[ri][rk];
+        yRow = yBase + ri * rg.step;
+        pA2 = cornerAt("x", row.lo);
+        pB2 = cornerAt("x", row.hi);
+        if (!pA2 || !pB2) { continue; }
+        extLine(pA2[0], pA2[1], pA2[0], yRow);
+        extLine(pB2[0], pB2[1], pB2[0], yRow);
+        dimLine(row.lo, yRow, row.hi, yRow);
+        tickAt(row.lo, yRow, true);
+        tickAt(row.hi, yRow, true);
+        span = row.hi - row.lo;
+        q2b = quantumLabel(span, fracOk);
+        out.push(textRot([(row.lo + row.hi) / 2, yRow, 0],
+          fmtCoord(span) + (q2b ? " or " + q2b : ""), "#334155", 0, 0, 10.5, -90));
+        }
+      }
+      for (ri = 0; ri < rowsY.length; ri++) {
+        for (rk = 0; rk < rowsY[ri].length; rk++) {
+        row = rowsY[ri][rk];
+        xRow = xBase + ri * rg.step;
+        pA2 = cornerAt("y", row.lo);
+        pB2 = cornerAt("y", row.hi);
+        if (!pA2 || !pB2) { continue; }
+        extLine(pA2[0], pA2[1], xRow, pA2[1]);
+        extLine(pB2[0], pB2[1], xRow, pB2[1]);
+        dimLine(xRow, row.lo, xRow, row.hi);
+        tickAt(xRow, row.lo, false);
+        tickAt(xRow, row.hi, false);
+        span = row.hi - row.lo;
+        q2b = quantumLabel(span, fracOk);
+        out.push(textRot([xRow, (row.lo + row.hi) / 2, 0],
+          fmtCoord(span) + (q2b ? " or " + q2b : ""), "#334155", 0, 0, 10.5, 0));
+        }
+      }
+    }
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    if (state.autozoom) {
+      svg.style.width = "100%"; svg.style.height = "100%"; svg.style.flex = "1 1 auto";
+    } else {
+      svg.style.width = W + "px"; svg.style.height = H + "px"; svg.style.flex = "0 0 auto";
+    }
+    
+    
+    var gridTxt = (state.show.grid) ? (gridLabels() + compassLabelsSvg()) : "";
+    if (state.rot) {
+      
+      
+      
+      svg.innerHTML = "<g transform=\"rotate(" + (-90 * state.rot) + " " +
+        (W / 2).toFixed(1) + " " + (H / 2).toFixed(1) + ")\">" +
+        uprightText(out.join(""), 90 * state.rot) + "</g>" + gridTxt;
+    } else {
+      svg.innerHTML = out.join("") + gridTxt;
+    }
+    updateStatus(r);
+  }
+
+  function fmt(v, n) { return v.toFixed(n === undefined ? 0 : n); }
+  
+  
+  
+  function extFailKind(reason) {
+    var r = String(reason || "");
+    if (/too small for backyard/i.test(r)) { return "tooSmall"; }
+    if (/border crossing/i.test(r)) { return "tooLong"; }
+    if (/A dropped|no house fit|A fit|no candidate|side extraction/i.test(r)) { return "noRoom"; }
+    if (/degenerate/i.test(r)) { return "collapsed"; }
+    if (/cut|slice|abort/i.test(r)) { return "noDivide"; }
+    return "other";
+  }
+  function extFailShort(reason) {
+    switch (extFailKind(reason)) {
+      case "tooSmall": return "Plot too small for backyard extension.";
+      case "tooLong": return "Frontage too long for the cut line";
+      case "noRoom": return "no room for house + backyard";
+      case "collapsed": return "a side has collapsed";
+      case "noDivide": return "shape does not divide cleanly";
+      default: return "could not be fitted";
+    }
+  }
+  function extFailText(reason) {
+    switch (extFailKind(reason)) {
+      case "tooSmall":
+        return "Plot too small for backyard extension.";
+      case "tooLong":
+        return "the plot is too wide for the game's backyard cut \u2014 the facade line only " +
+          "reaches 10,000 u (100 m) out from the house. Shorten the Frontage, or move a " +
+          "corner in.";
+      case "noRoom":
+        return "there is not enough room for a house and a backyard at this shape. " +
+          "Widen the Frontage, lengthen the Length, or move a corner.";
+      case "collapsed":
+        return "one of the sides has collapsed. Give every side some length with the " +
+          "Frontage and Length sliders, or pick a preset.";
+      case "noDivide":
+        return "the backyard does not divide cleanly at this shape. Nudge a corner, or try a preset.";
+      default:
+        return "the backyard could not be fitted at this shape. Adjust Frontage or Length, " +
+          "or move a corner.";
+    }
+  }
+  function kv(k, v) {
+    return "<div class=\"kv\"><span>" + k + "</span><span>" + v + "</span></div>";
+  }
+
+  function updateStatus(r) {
+    var el = document.getElementById("status");
+    var banner = document.getElementById("banner");
+    
+    
+    function showBanner(text, kind) {
+      banner.textContent = text;
+      if (kind === "note") { banner.classList.add("note"); }
+      else { banner.classList.remove("note"); }
+      banner.classList.add("on");
+    }
+    function hideBanner() {
+      banner.classList.remove("on");
+      banner.classList.remove("note");
+    }
+    var rows = [];
+    var cls = "";
+    var sec = function (t) { return "<div class=\"sec\">" + t + "</div>"; };
+    var setLayer = function (id, on, txt) {
+      var e = document.getElementById(id);
+      if (!e) { return; }
+      e.className = "ly-state " + (on ? "on" : "off");
+      e.textContent = txt;
+    };
+    (function () {
+      ["st-zones", "st-buildings"].forEach(function (id) {
+        var e = document.getElementById(id);
+        if (e) { e.className = "ly-state"; e.textContent = "\u2014"; }
+      });
+    })();
+
+    
+    var shoelace = function (pts) {
+      if (!pts || pts.length < 3) { return null; }
+      var a = 0;
+      for (var si = 0; si < pts.length; si++) {
+        var sq = pts[(si + 1) % pts.length];
+        a += pts[si][0] * sq[1] - sq[0] * pts[si][1];
+      }
+      return Math.abs(a) / 2;
+    };
+    var plotArea = shoelace(r.corners);
+    
+    
+    
+    var extArea = (r.fit && r.fit.ok)
+      ? shoelace((r.fit.profile && r.fit.profile.length > 3) ? r.fit.profile : r.fit.quad)
+      : null;
+
+    if (r.plants) {
+      rows.push(sec("Plants"));
+      rows.push(kv("N plants", r.plants.count));
+      
+      
+      if (r.plants && plotArea !== null) {
+        var du = AREA_UNITS[areaUnit];
+        var dv = r.plants.count / (plotArea / du.div);
+        var dtxt = (du.id === "uu") ? dv.toExponential(2) : String(Math.round(dv));
+        var dtip = "Plant Density is N plants divided by the plot area, expressed per " +
+                   "the selected area unit. The unit follows the plot area and extension " +
+                   "area selector (" + du.name + ").";
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + dtip + "\">Plant Density</span>" +
+                  "<span title=\"" + dtip + "\">" + dtxt + " /" + du.name + "</span></div>");
+      }
+      if (r.plantsAt && r.plantsAt[0] !== null && r.plantsAt[1] !== null) {
+        var nlo = r.plantsAt[0], nhi = r.plantsAt[1], nn = r.plants.count;
+        var pct = function (v) {
+          var q = Math.round((v - nn) / nn * 100);
+          return (q > 0 ? "+" : "") + q;
+        };
+        var tip = "Entire possible range for N plants in actual game: there is a pseudorandom seed " +
+                  "that will make this plot have a slightly different N this app displays (" +
+                  pct(nlo) + "%," + pct(nhi) + "%).";
+        if (r.plantsAt.length > 3 && r.plantsAt[2] !== null && r.plantsAt[3] !== null) {
+          tip += " The 90% confidence interval is " + pct(r.plantsAt[2]) + "%," + pct(r.plantsAt[3]) + "%";
+        }
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + tip + "\">N Range</span>" +
+                  "<span title=\"" + tip + "\">" + nlo + " to " + nhi + "</span></div>");
+      } else if (r.plants && r.plants.count) {
+        
+        var etip = "No bed records: the plant raster does not depend on frac, so the " +
+                   "count is exact.";
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + etip + "\">N Range</span>" +
+                  "<span title=\"" + etip + "\">Exact</span></div>");
+      }
+      if (r.plants.count && r.shed && r.shed.box && r.shed.box.length) {
+        var scx = 0, scy = 0, bi;
+        for (bi = 0; bi < r.shed.box.length; bi++) {
+          scx += r.shed.box[bi][0]; scy += r.shed.box[bi][1];
+        }
+        scx /= r.shed.box.length; scy /= r.shed.box.length;
+        var dsum = 0;
+        for (bi = 0; bi < r.plants.points.length; bi++) {
+          dsum += Math.hypot(r.plants.points[bi][0] - scx, r.plants.points[bi][1] - scy);
+        }
+        var atip = "Average plant distance to the shed." + (r.shedStandIn
+          ? " This plot has no bed records, so the engine spawns no shed; the " +
+            "reference point is house A (stand-in)."
+          : "");
+        rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + atip +
+          "\">Avg distance</span><span>" + fmt(dsum / r.plants.points.length, 0) + "</span></div>");
+      }
+    }
+
+    
+    
+    
+    
+    var extCost = function (a) {
+      if (a === null || a === undefined) { return null; }
+      return Math.max(1.0, Math.floor(a / EXT_COST_BASE * 10 + 0.5) / 10);
+    };
+    var extMod = extCost(extArea);
+    rows.push(sec("Costs"));
+    rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" +
+      "Regional wealth cost of the upgrade is multiplied by this: +10% per 350,000 uu of " +
+      "extension area above 3,675,000 uu (base 3,500,000 uu = DefaultExtensionLength 3500 " +
+      "x DefaultExtensionWidth 1000). Clamped at 1.0, so smaller extensions get no " +
+      "discount.\">Ext Cost Modifier</span><span>" +
+      (extMod === null ? "\u2014" : "+" + Math.round((extMod - 1) * 100) + "%") + "</span></div>");
+    
+    
+    
+    
+    
+    var SEEDS = [[20, "Beetroots", "#7c3aed"], [32, "Carrots", "#ea580c"],
+                 [48, "Cabbages", "#15803d"]];
+    var seedHtml = SEEDS.map(function (s) {
+      var v = (extMod === null) ? "\u2014" : String(Math.round(s[0] * extMod));
+      return "<span class=\"hint\" title=\"" + s[1] + "\" style=\"color:" + s[2] + "\">" + v + "</span>";
+    }).join(", ");
+    rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" +
+      "Seed prices in regional wealth: Beetroots 20, Carrots 32, Cabbages 48, each with the " +
+      "additive percentage modifiers folded in (the Ext Cost Modifier).\">Seed Cost (RW)</span><span>" +
+      seedHtml + "</span></div>");
+    
+    
+    if (extMod !== null && r.plants && r.plants.count) {
+      var prHtml = SEEDS.map(function (s) {
+        var price = Math.round(s[0] * extMod);
+        var v = (price > 0) ? (r.plants.count / price).toFixed(2) : "\u2014";
+        return "<span class=\"hint\" title=\"" + s[1] +
+          " - N plants per point of regional wealth spent on this seed\" style=\"color:" +
+          s[2] + "\">" + v + "</span>";
+      }).join(", ");
+      var prTip = "N plants divided by each crop's seed price in regional wealth " +
+        "(Beetroots, Carrots, Cabbages - left to right).";
+      rows.push("<div class=\"kv\"><span class=\"hint\" title=\"" + prTip +
+        "\">Plants per RW</span><span>" + prHtml + "</span></div>");
+    }
+
+    rows.push(sec("Plot"));
+
+    
+
+    var areaCell = function (a) {
+      if (a === null || a === undefined) { return "\u2014"; }
+      var u = AREA_UNITS[areaUnit];
+      return "<span class=\"unitpick\" title=\"" + u.tip + "\">" + u.text(a) + "</span>";
+    };
+    rows.push(kv("plot area", areaCell(plotArea)));
+    rows.push(kv("extension area", areaCell(extArea)));
+
+    
+    
+    for (var ci = 0; ci < 4; ci++) {
+      var cp = r.corners[ci];
+      rows.push("<div class=\"kv\"><span>P" + ci + "</span><span>" +
+        fmtCoord(cp[0]) + ", " + fmtCoord(cp[1]) + "</span></div>");
+    }
+    for (var ei = 0; ei < 4; ei++) {
+      var ea = r.corners[ei], eb = r.corners[(ei + 1) % 4];
+      rows.push(kv("P" + ei + "\u2192P" + ((ei + 1) % 4),
+        fmt(Math.hypot(eb[0] - ea[0], eb[1] - ea[1]))));
+    }
+
+    if (r.wind >= 0) {
+      cls = "err";
+      showBanner("P0\u2013P3 are running the wrong way round. The engine only ever " +
+        "stores plots with a negative signed area \u2014 in UE5 (left-handed, map Y " +
+        "increasing downward) that reads counter-clockwise on screen. Drag a corner back " +
+        "across the plot until the order matches.");
+      el.className = cls;
+      el.innerHTML = rows.join("");
+      return;
+    }
+
+    rows.push(sec("Primary House"));
+    rows.push(kv("fit position", r.aDecal ? fmt(r.aDecal.arc) : "none"));
+
+    rows.push(sec("Secondary House"));
+    rows.push(kv("fit position", r.secondary ? fmt(r.secondary.origin[0]) : "none"));
+
+    rows.push(sec("Extension"));
+    if (!r.fit.ok) {
+      cls = "err";
+      rows.push(kv("backyard", "none on this plot shape"));
+      rows.push(kv("why", extFailShort(r.fit.reason)));
+      if (r.geomOk === false) {
+        showBanner("This plot's corners cross each other (a bow-tie shape). " +
+          "Move a corner until the outline no longer crosses itself.");
+      } else {
+        var failText = extFailText(r.fit.reason);
+        showBanner((extFailKind(r.fit.reason) === "tooSmall")
+          ? failText
+          : "No backyard extension: " + failText);
+      }
+    } else {
+      hideBanner();
+      var P0 = r.corners[0], P1 = r.corners[1], Q0 = r.fit.quad[0], Q1 = r.fit.quad[1];
+      var fx = P1[0] - P0[0], fy = P1[1] - P0[1];
+      var fl = Math.sqrt(fx * fx + fy * fy);
+      var depth = null;
+      if (fl > 1e-9) {
+        var nx = fy / fl, ny = -fx / fl;
+        var d0 = (Q0[0] - P0[0]) * nx + (Q0[1] - P0[1]) * ny;
+        var d1 = (Q1[0] - P0[0]) * nx + (Q1[1] - P0[1]) * ny;
+        depth = Math.abs((d0 + d1) / 2);
+      }
+      rows.push(kv("cut depth", depth === null ? "\u2014" : fmt(depth)));
+      rows.push(kv("Off House", (r.fit.trace && r.fit.trace.Q)
+        ? fmt(r.fit.trace.Q[0]) + ", " + fmt(r.fit.trace.Q[1]) + " (" +
+          ((r.fit.trace.boxSource) || "A") + ")"
+        : "\u2014"));
+    }
+
+    if (r.beds) {
+      if (r.beds.ok) {
+        var area = function (p) {
+          var a = 0;
+          for (var i = 0; i < p.length; i++) {
+            var q = p[(i + 1) % p.length];
+            a += p[i][0] * q[1] - q[0] * p[i][1];
+          }
+          return Math.abs(a) / 2;
+        };
+        rows.push(sec("Beds"));
+        rows.push(kv("areas", [r.beds.bed1, r.beds.bed2, r.beds.bed3]
+          .map(function (p) { return fmt(area(p)); }).join(" / ")));
+        rows.push(kv("shed", r.beds.shed ? fmt(area(r.beds.shed)) : "none"));
+        rows.push(kv("shed mesh", r.shed
+          ? fmt(r.shed.origin[0]) + ", " + fmt(r.shed.origin[1])
+          : "none"));
+        rows.push(kv("offset", fmt(r.beds.offset[0]) + ", " + fmt(r.beds.offset[1])));
+      } else {
+        
+        
+        
+        cls = "";
+        rows.push("<div class=\"kv note\"><span>beds</span><span>No shed or planter " +
+          "beds generated. Plants fill the whole extension.</span></div>");
+        if (r.fit && r.fit.ok && r.shed) {
+          
+          
+          rows.push(kv("shed mesh", "at house A " + fmt(r.shed.origin[0]) + ", " +
+            fmt(r.shed.origin[1]) + " (stand-in: no bed records)"));
+        }
+        showBanner("No shed or planter beds generated. Plants fill the whole extension.",
+                   "note");
+      }
+    }
+    setLayer("st-zones", !!(r.beds && r.beds.ok) || !!(r.beds && r.beds.shed),
+             (r.beds && r.beds.ok) ? "present" : "none");
+    var parts = [];
+    if (r.aDecal) { parts.push("A"); }
+    if (r.secondary) { parts.push("B"); }
+    if (r.shed) { parts.push("shed"); }
+    setLayer("st-buildings", parts.length > 0, parts.length ? parts.join(" + ") : "none");
+    el.className = cls;
+    el.innerHTML = rows.join("");
+    
+    
+    if (seedBedsUi) { seedBedsUi(!!(r.beds && r.beds.ok)); }
+    
+    
+    if (drag === null) { updateCoords(r); }
+  }
+
+  
+  function centroid(pts) {
+    var cx = 0, cy = 0;
+    for (var i = 0; i < pts.length; i++) { cx += pts[i][0]; cy += pts[i][1]; }
+    return [cx / pts.length, cy / pts.length];
+  }
+
+  function updateCoords(r) {
+    var out = [];
+    if (r.aDecal) {
+      
+      
+      
+      out.push(kv("House", fmt(r.aDecal.origin[0], 1) + ", " + fmt(r.aDecal.origin[1], 1)));
+    } else {
+      out.push(kv("House", "none"));
+    }
+    if (r.shed) {
+      var s = centroid(r.shed.box);
+      out.push(kv("Shed", fmt(s[0], 1) + ", " + fmt(s[1], 1)));
+    } else {
+      out.push(kv("Shed", "none"));
+    }
+    if (r.plants && r.plants.count) {
+      for (var i = 0; i < r.plants.count; i++) {
+        var p = r.plants.points[i];
+        out.push(kv("spot" + (i + 1), fmt(p[0], 1) + ", " + fmt(p[1], 1)));
+      }
+    }
+    document.getElementById("coords").innerHTML = out.join("");
+  }
+
+  
+  var drag = null;
+
+  
+  
+  function unrotatePoint(qx, qy) {
+    if (!state.rot) { return [qx, qy]; }
+    var cx = W / 2, cy = H / 2, dx = qx - cx, dy = qy - cy;
+    if (state.rot === 1) { return [cx - dy, cy + dx]; }
+    if (state.rot === 2) { return [cx - dx, cy - dy]; }
+    return [cx + dy, cy - dx];
+  }
+
+  function svgPoint(evt) {
+    
+    
+    
+    
+    
+    if (svg.createSVGPoint && svg.getScreenCTM) {
+      var pt = svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      var ctm = svg.getScreenCTM();
+      if (ctm) {
+        var q = pt.matrixTransform(ctm.inverse());
+        return unrotatePoint(q.x, q.y);
+      }
+    }
+    var rect = svg.getBoundingClientRect();
+    var s = Math.min(rect.width / W, rect.height / H);
+    return unrotatePoint(
+      W / 2 + (evt.clientX - rect.left - rect.width / 2) / s,
+      H / 2 + (evt.clientY - rect.top - rect.height / 2) / s);
+  }
+
+  var dragOffset = null;   
+
+  svg.addEventListener("pointerdown", function (evt) {
+    var g = evt.target.closest ? evt.target.closest(".handle") : null;
+    if (!g) { return; }
+    var i = parseInt(g.getAttribute("data-i"), 10);
+    if (i === 0 && state.lock0) { return; }   
+    if (!state.manual) { return; }      
+    drag = i;
+    histDrag = histSnap();              
+    var sp = svgPoint(evt);
+    var w = toWorld(sp[0], sp[1]);
+    var c0 = state.corners[i];
+    dragOffset = [c0[0] - w[0], c0[1] - w[1]];
+    g.classList.add("drag");
+    try { svg.setPointerCapture(evt.pointerId); } catch (e) {   }
+    render();          
+    evt.preventDefault();
+  });
+
+  svg.addEventListener("pointermove", function (evt) {
+    if (drag === null) { return; }
+    var sp = svgPoint(evt);
+    var w = toWorld(sp[0], sp[1]);
+    
+    
+    w = [w[0] + dragOffset[0], w[1] + dragOffset[1]];
+    
+    if (drag === 1 && state.lock1) { w[1] = 0; }   
+    
+    
+    w[0] = Math.round(w[0]);
+    w[1] = Math.round(w[1]);
+    if (state.snap) {                   
+      w[0] = Math.round(w[0] / SNAP_STEP) * SNAP_STEP;
+      w[1] = Math.round(w[1] / SNAP_STEP) * SNAP_STEP;
+    }
+    var c = state.corners[drag];
+    state.corners[drag] = [w[0], w[1], c[2] === undefined ? 0 : c[2]];
+    render();
+    evt.preventDefault();
+  });
+
+  function endDrag(evt) {
+    if (drag === null) { return; }
+    drag = null;
+    dragOffset = null;
+    if (histDrag) { histPush(histDrag); histDrag = null; }
+    try { svg.releasePointerCapture(evt.pointerId); } catch (e) {}
+    
+    
+    
+    
+    var b = bbox(state.corners);
+    if (state.fitView || b.minx < view.minx || b.maxx > view.maxx ||
+        b.miny < view.miny || b.maxy > view.maxy) {
+      fitView();
+    }
+    render();   
+  }
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+
+  
+  
+  
+  
+  
+  
+  
+  var LAYER_KEYS = ["grid", "zones", "plants", "plabels", "buildings", "labels", "dbg"];
+  var LAYER_INPUTS = { grid: "ly-grid", zones: "ly-zones", plants: "ly-plants",
+                       plabels: "ly-plabels", buildings: "ly-buildings",
+                       labels: "ly-labels", dbg: "ly-dbg" };
+
+  function factoryUi() {
+    return {
+      corners: START.map(function (p) { return p.slice(); }),
+      show: { grid: true, zones: false, plants: true, plabels: false,
+              buildings: true, labels: false, dbg: false },
+      autozoom: true, manual: true, snap: true, ruler: true, rot: 0, fitView: true,
+      lock0: true, lock1: true, square: false, areaUnit: 0, seed: 0.5
+    };
+  }
+
+  function uiSnapshot() {
+    var show = {};
+    for (var i = 0; i < LAYER_KEYS.length; i++) {
+      show[LAYER_KEYS[i]] = !!state.show[LAYER_KEYS[i]];
+    }
+    return {
+      corners: state.corners.map(function (q) { return q.slice(); }),
+      show: show,
+      autozoom: !!state.autozoom, manual: !!state.manual, snap: !!state.snap,
+      ruler: !!state.ruler, rot: state.rot | 0, fitView: !!state.fitView,
+      lock0: !!state.lock0, lock1: !!state.lock1,
+      square: squareFlagGet ? squareFlagGet() : false,
+      areaUnit: areaUnit,
+      seed: seedGet ? seedGet() : 0.5
+    };
+  }
+
+  function applyUi(u) {
+    state.corners = u.corners.map(function (q) {
+      return [q[0], q[1], q[2] === undefined ? 0 : q[2]];
+    });
+    for (var i = 0; i < LAYER_KEYS.length; i++) {
+      var k = LAYER_KEYS[i];
+      state.show[k] = !!u.show[k];
+      var el = document.getElementById(LAYER_INPUTS[k]);
+      if (el) { el.checked = state.show[k]; }
+    }
+    state.autozoom = !!u.autozoom;
+    state.manual = !!u.manual;
+    state.snap = !!u.snap;
+    state.ruler = !!u.ruler;
+    state.rot = u.rot | 0;
+    state.fitView = !!u.fitView;
+    state.lock0 = !!u.lock0;
+    state.lock1 = !!u.lock1;
+    areaUnit = u.areaUnit | 0;
+    if (seedSetHook) { seedSetHook(u.seed === undefined ? 0.5 : u.seed); }
+    var az = document.getElementById("autozoom");
+    if (az) { az.checked = state.autozoom; }
+    if (squareFlagSet) { squareFlagSet(!!u.square); }   
+    if (applyModeUi) { applyModeUi(); }                 
+    if (syncUiFlags) { syncUiFlags(); }                 
+    syncFit();
+    autoFit();
+    render();
+  }
+
+  
+  function bindCheck(id, key) {
+    var el = document.getElementById(id);
+    el.addEventListener("change", function () {
+      state.show[key] = el.checked;
+      render();
+    });
+  }
+  bindCheck("ly-grid", "grid");
+  bindCheck("ly-zones", "zones");
+  bindCheck("ly-plants", "plants");
+  bindCheck("ly-plabels", "plabels");
+  bindCheck("ly-buildings", "buildings");
+  bindCheck("ly-labels", "labels");
+  bindCheck("ly-dbg", "dbg");
+
+  (function () {
+    var az = document.getElementById("autozoom");
+    az.addEventListener("change", function () {
+      state.autozoom = az.checked;
+      autoFit();
+      render();
+    });
+  })();
+
+  
+  (function () {
+    var mode = document.getElementById("mode");
+    var preset = document.getElementById("preset");
+    var box = document.getElementById("dims");
+    
+    
+    
+    
+    
+    
+    
+    var PRESET_URL = "https://manorlordstheorycraft.github.io/MLTC-Burgage-Plot-Constructor/plotPresets.ini";
+    var PRESET_HEADER = ["presetname", "p0x", "p0y", "p1x", "p1y", "p2x", "p2y", "p3x", "p3y"];
+    var PRESETS = [];
+
+    function presetEsc(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function presetWarn(lines) {
+      var el = document.getElementById("presetwarn");
+      if (!el) { return; }
+      el.textContent = (lines || []).join("\n");
+      el.className = (lines && lines.length) ? "banner warn on" : "banner warn";
+    }
+    function csvSplit(line) {
+      var out = [], cur = "", q = false;
+      for (var i = 0; i < line.length; i++) {
+        var ch = line.charAt(i);
+        if (q) {
+          if (ch === '"') {
+            if (line.charAt(i + 1) === '"') { cur += '"'; i++; } else { q = false; }
+          } else { cur += ch; }
+        } else if (ch === '"') { q = true; }
+        else if (ch === ",") { out.push(cur); cur = ""; }
+        else { cur += ch; }
+      }
+      out.push(cur);
+      return out;
+    }
+    function sameCorners(a, b) {
+      for (var i = 0; i < 4; i++) {
+        if (Math.abs(a[i][0] - b[i][0]) > 1e-6 || Math.abs(a[i][1] - b[i][1]) > 1e-6) { return false; }
+      }
+      return true;
+    }
+    
+    
+    function presetModifier(corners) {
+      try {
+        var fit = B.buildExtensionForPlot(corners, B.engineBorder(corners.concat([corners[0]])));
+        if (!fit || !fit.ok) { return 1; }
+        if (B.extensionClearance && !B.extensionClearance(fit.profile, fit.quad).ok) { return 1; }
+        var a = 0, i, j;
+        for (i = 0, j = fit.profile.length - 1; i < fit.profile.length; j = i++) {
+          a += fit.profile[j][0] * fit.profile[i][1] - fit.profile[i][0] * fit.profile[j][1];
+        }
+        a = Math.abs(a / 2);
+        return Math.max(1, Math.floor(a / 3500000 * 10 + 0.5) / 10);
+      } catch (e) { return null; }
+    }
+    
+    function parsePresetCsv(text) {
+      var lines = String(text || "").split(/\r?\n/), rows = [], errors = [], i;
+      for (i = 0; i < lines.length; i++) {
+        var t = lines[i].replace(/^\uFEFF/, "").trim();
+        if (!t) { continue; }
+        if (t.charAt(0) === "#" || t.charAt(0) === ";") { continue; }
+        rows.push({ n: i + 1, f: csvSplit(t) });
+      }
+      if (!rows.length) { return { presets: [], errors: ["the file is empty"] }; }
+      var head = rows.shift();
+      var got = head.f.map(function (s) { return s.trim().toLowerCase(); }).join(",");
+      if (got !== PRESET_HEADER.join(",")) {
+        return { presets: [], errors: ["header must be " + PRESET_HEADER.join(",") +
+          " (found " + head.f.join(",") + ")"] };
+      }
+      var presets = [], seen = {};
+      for (i = 0; i < rows.length; i++) {
+        var r = rows[i], f = r.f, tag = "row " + r.n + ": ";
+        if (f.length !== 9) { errors.push(tag + "expected 9 fields, found " + f.length); continue; }
+        var name = String(f[0]).trim();
+        if (!name) { errors.push(tag + "empty preset name"); continue; }
+        var nums = [], bad = null;
+        for (var k = 1; k < 9; k++) {
+          var v = Number(String(f[k]).trim());
+          if (!isFinite(v)) { bad = PRESET_HEADER[k].toUpperCase(); break; }
+          nums.push(v);
+        }
+        if (bad) { errors.push(tag + bad + " is not a number"); continue; }
+        var c = [[nums[0], nums[1], 0], [nums[2], nums[3], 0], [nums[4], nums[5], 0], [nums[6], nums[7], 0]];
+        if (!B.isSimpleQuad(c)) { errors.push(tag + name + " - self-intersecting outline"); continue; }
+        if (B.winding(c) >= 0) {
+          errors.push(tag + name + " - outline is reversed (P0..P3 must wind like the engine)");
+          continue;
+        }
+        var key = name.toLowerCase();
+        if (seen[key]) { errors.push(tag + name + " - duplicate name"); continue; }
+        seen[key] = 1;
+        var mod = presetModifier(c);
+        var m = /\(\s*\+?\s*(\d+(?:\.\d+)?)\s*%\s*\)/.exec(name);
+        if (mod !== null && m) {
+          var said = Number(m[1]), real = Math.round((mod - 1) * 1000) / 10;
+          if (Math.abs(said - real) > 0.5) {
+            errors.push(tag + name + " - name says +" + said + "% but the shape is +" + real + "%");
+          }
+        }
+        presets.push({ name: name, c: c });
+      }
+      if (!presets.length && !errors.length) { errors.push("the file has no presets"); }
+      return { presets: presets, errors: errors };
+    }
+    
+    
+    
+    function applyPresetList(res, notes) {
+      var list = (res.presets || []).slice();
+      var out = (notes || []).concat(res.errors || []);
+      var have = false;
+      for (var i = 0; i < list.length; i++) { if (sameCorners(list[i].c, START)) { have = true; break; } }
+      if (!have) {
+        var dm = presetModifier(START);
+        var pct = dm === null ? 290 : Math.round((dm - 1) * 100);
+        list.push({ name: "Square 4CP (+" + pct + "%)", c: START.map(function (q) { return q.slice(); }) });
+        out.push("no preset has the default 4CP square's corners - regenerated it as the last entry");
+      }
+      PRESETS = list;
+      var html = ['<option value="-1">N/A</option>'];
+      for (i = 0; i < PRESETS.length; i++) {
+        html.push('<option value="' + i + '">' + presetEsc(PRESETS[i].name) + "</option>");
+      }
+      preset.innerHTML = html.join("");
+      presetWarn(out);
+      syncPreset();
+      
+      
+      
+      if (view) { render(); }
+    }
+    function loadPresets() {
+      
+      if (!window.fetch) {
+        applyPresetList({ presets: [], errors: ["this browser cannot fetch plotPresets.ini"] }, []);
+        return;
+      }
+      
+      fetch(PRESET_URL + "?v=" + Date.now(), { cache: "no-store", mode: "cors" })
+        .then(function (r) {
+          if (!r.ok) { throw new Error("HTTP " + r.status); }
+          return r.text();
+        })
+        .then(function (text) { applyPresetList(parsePresetCsv(text), []); })
+        .catch(function (e) {
+          applyPresetList({ presets: [], errors: [] },
+            ["plotPresets.ini could not be read from the repo (" + (e && e.message ? e.message : e) +
+             ") - no presets loaded"]);
+        });
+    }
+    var rw = document.getElementById("dim-w"), nw = document.getElementById("num-w");
+    var rl = document.getElementById("dim-l"), nl = document.getElementById("num-l");
+    var sq = document.getElementById("square");
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    var seedR = document.getElementById("hxseed");
+    var seedVal = document.getElementById("hxval");
+    var seedNa = document.getElementById("hxna");
+    var zonesCb = document.getElementById("ly-zones");
+    var zonesTimer = 0, zonesWas = null;
+    function seedFrac(s) {
+      if (!s) { return 0; }             
+      return s > 0 ? s : 1 + s;
+    }
+    function seedText(s) {
+      return String(Math.round(s * 1000) / 1000);
+    }
+    function zonesOn() {
+      if (zonesWas === null) { zonesWas = !!state.show.zones; }
+      if (!state.show.zones) {
+        state.show.zones = true;
+        if (zonesCb) { zonesCb.checked = true; }
+      }
+    }
+    function zonesLater(ms) {
+      if (zonesTimer) { clearTimeout(zonesTimer); }
+      zonesTimer = setTimeout(function () {
+        zonesTimer = 0;
+        if (zonesWas === null) { return; }
+        var was = zonesWas;
+        zonesWas = null;
+        if (!!state.show.zones === was) { return; }
+        state.show.zones = was;
+        if (zonesCb) { zonesCb.checked = was; }
+        render();
+      }, ms);
+    }
+    function seedApply(v) {
+      var s = Number(v);
+      if (!isFinite(s)) { s = 0; }
+      s = Math.max(0, Math.min(1, s));   
+      seedR.value = String(s);
+      if (seedVal) { seedVal.textContent = seedText(s); }
+      state.frac = seedFrac(s);         
+      return s;
+    }
+    
+    seedBedsUi = function (hasBeds) {
+      if (seedR) { seedR.style.display = hasBeds ? "" : "none"; }
+      if (seedVal) { seedVal.style.display = hasBeds ? "" : "none"; }
+      if (seedNa) { seedNa.style.display = hasBeds ? "none" : ""; }
+    };
+    
+    
+    seedR.addEventListener("pointerdown", function () { zonesOn(); });
+    seedR.addEventListener("input", function () {
+      zonesOn();
+      seedApply(seedR.value);
+      render();
+    });
+    function seedRelease() {
+      seedApply(0.5);
+      render();
+      zonesLater(1000);
+    }
+    seedR.addEventListener("change", seedRelease);
+    seedR.addEventListener("pointerup", seedRelease);
+    seedR.addEventListener("pointercancel", seedRelease);
+    seedApply(0.5);
+    seedGet = function () { return Number(seedR.value) || 0; };
+    seedSetHook = function (v) { seedApply(v); };
+
+    
+    var MIN_FRONTAGE = 800, MIN_FRONTAGE_SQ = 2000, MIN_LENGTH = 2000;
+    function edges() {
+      var c = state.corners;
+      var w = Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]);
+      var l = Math.hypot(c[3][0] - c[0][0], c[3][1] - c[0][1]);
+      var p23 = Math.hypot(c[2][0] - c[3][0], c[2][1] - c[3][1]);
+      var p12 = Math.hypot(c[2][0] - c[1][0], c[2][1] - c[1][1]);
+      
+      
+      var wFloor = sq.checked ? MIN_FRONTAGE_SQ : MIN_FRONTAGE;
+      var wMin = Math.max(wFloor, Math.ceil((w - p23 + 100) / 100) * 100);
+      var lMin = Math.max(MIN_LENGTH, Math.ceil((l - p12 + 100) / 100) * 100);
+      return { w: w, l: l, p23: p23, p12: p12, wMin: wMin, lMin: lMin };
+    }
+    function show() {
+      var e = edges();
+      rw.min = nw.min = String(e.wMin);
+      rl.min = nl.min = String(e.lMin);
+      rw.max = nw.max = "20000";
+      rl.max = nl.max = "20000";
+      rw.value = nw.value = Math.round(e.w);
+      
+      
+      rl.value = nl.value = Math.round(sq.checked ? e.w : e.l);
+      rl.disabled = nl.disabled = sq.checked;
+    }
+    function validQuad(c) {
+      
+      for (var i = 0; i < 4; i++) {
+        var a = c[i], b = c[(i + 1) % 4];
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 100 - 1e-6) { return false; }
+      }
+      return true;
+    }
+    function snapshot() {
+      return state.corners.map(function (q) { return q.slice(); });
+    }
+    
+    
+    
+    function applyWidth(newW) {
+      var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
+      var oldW = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      var oldP23 = Math.hypot(p2[0] - p3[0], p2[1] - p3[1]);
+      var u1 = B.unit2(p1[0] - p0[0], p1[1] - p0[1]);   
+      var u2 = B.unit2(p2[0] - p3[0], p2[1] - p3[1]);   
+      if (!u1[0] && !u1[1]) { return false; }
+      if (!u2[0] && !u2[1]) { return false; }
+      var newP23 = oldP23 + (newW - oldW);
+      if (newW <= 0 || newP23 <= 0) { return false; }
+      var keep = snapshot();
+      c[1] = [p0[0] + newW * u1[0], p0[1] + newW * u1[1], p1[2]];
+      c[2] = [p3[0] + newP23 * u2[0], p3[1] + newP23 * u2[1], p2[2]];
+      if (!validQuad(c)) { state.corners = keep; return false; }
+      return true;
+    }
+    
+    
+    function applyLength(newL) {
+      var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
+      var oldL = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+      var oldP12 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+      var v3 = B.unit2(p3[0] - p0[0], p3[1] - p0[1]);   
+      var v2 = B.unit2(p2[0] - p1[0], p2[1] - p1[1]);   
+      if (!v3[0] && !v3[1]) { return false; }
+      if (!v2[0] && !v2[1]) { return false; }
+      var newP12 = oldP12 + (newL - oldL);
+      if (newL <= 0 || newP12 <= 0) { return false; }
+      var keep = snapshot();
+      c[3] = [p0[0] + newL * v3[0], p0[1] + newL * v3[1], p3[2]];
+      c[2] = [p1[0] + newP12 * v2[0], p1[1] + newP12 * v2[1], p2[2]];
+      if (!validQuad(c)) { state.corners = keep; return false; }
+      return true;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    function applySquare(side) {
+      var c = state.corners, p0 = c[0], p1 = c[1], p2 = c[2], p3 = c[3];
+      var u1 = B.unit2(p1[0] - p0[0], p1[1] - p0[1]);
+      if (!u1[0] && !u1[1]) { return false; }
+      var want = (B.winding(c) > 0) ? 1 : -1;        
+      var n = (want < 0) ? [u1[1], -u1[0]] : [-u1[1], u1[0]];
+      var keep = snapshot();
+      c[1] = [p0[0] + side * u1[0], p0[1] + side * u1[1], p1[2]];
+      c[3] = [p0[0] + side * n[0], p0[1] + side * n[1], p3[2]];
+      c[2] = [c[3][0] + (c[1][0] - p0[0]), c[3][1] + (c[1][1] - p0[1]), p2[2]];
+      
+      
+      if (!validQuad(c) || ((B.winding(c) > 0) ? 1 : -1) !== want) {
+        state.corners = keep;
+        return false;
+      }
+      return true;
+    }
+    function commit(which, val) {
+      var e = edges();
+      if (which === "w") {
+        var w = Math.max(e.wMin, Math.min(20000, Math.round(val / 100) * 100));
+        var keep = snapshot();
+        if (sq.checked) {
+          if (!applySquare(w)) { state.corners = keep; }
+        } else {
+          applyWidth(w);
+        }
+      } else if (!sq.checked) {
+        var l = Math.max(e.lMin, Math.min(20000, Math.round(val / 100) * 100));
+        applyLength(l);
+      }
+      show();
+      autoFit();
+      render();
+    }
+    sq.addEventListener("change", function () {
+      var keep = histSnap();         
+      keep.square = !sq.checked;     
+      if (sq.checked && !applySquare(Math.max(MIN_FRONTAGE_SQ, edges().w))) { sq.checked = false; }
+      show();
+      autoFit();
+      render();
+      histPush(keep);
+    });
+    mode.addEventListener("change", function () {
+      var keep = histSnap();         
+      state.manual = mode.value === "manual";
+      box.style.display = state.manual ? "none" : "block";
+      syncSnap();    
+      syncRuler();   
+      if (!state.manual) {
+        
+        
+        var e0 = edges();
+        if (e0.w < e0.wMin) { applyWidth(e0.wMin); }
+        var e1 = edges();
+        if (sq.checked) {
+          applySquare(Math.max(MIN_FRONTAGE_SQ, e1.w));
+        } else if (e1.l < e1.lMin) {
+          applyLength(e1.lMin);
+        }
+        show();
+      }
+      render();
+      histPush(keep);
+    });
+    preset.addEventListener("change", function () {
+      var p = PRESETS[+preset.value];
+      if (!p) { return; }                 
+      var keep = histSnap();
+      
+      if (sq.checked) { sq.checked = false; rl.disabled = nl.disabled = false; }
+      state.corners = p.c.map(function (q) { return q.slice(); });
+      autoFit();
+      if (!state.manual) { show(); }
+      render();
+      histPush(keep);
+    });
+    
+    
+    syncPreset = function () {
+      var c = state.corners;
+      for (var i = 0; i < PRESETS.length; i++) {
+        var p = PRESETS[i].c, ok = true;
+        for (var k = 0; k < 4 && ok; k++) {
+          if (Math.abs(c[k][0] - p[k][0]) > 1e-6 || Math.abs(c[k][1] - p[k][1]) > 1e-6) {
+            ok = false;
+          }
+        }
+        if (ok) { preset.value = String(i); return; }
+      }
+      preset.value = "-1";
+    };
+    
+    window.__presets = {
+      parse: parsePresetCsv,
+      apply: function (text, notes) { applyPresetList(parsePresetCsv(text), notes || []); },
+      list: function () { return PRESETS.map(function (p) { return { name: p.name, c: p.c }; }); },
+      url: PRESET_URL
+    };
+    loadPresets();
+    
+    
+    
+    
+    var snapBtn = document.getElementById("snap");
+    var snapTip = document.getElementById("snap-tip");
+    function syncSnap() {
+      snapBtn.setAttribute("aria-pressed", state.snap ? "true" : "false");
+      if (state.manual) {
+        snapTip.removeAttribute("title");
+        snapTip.style.cursor = "";
+        snapBtn.title = state.snap
+          ? "Snap to Grid on: corners land on 50-unit steps - click to snap to whole units instead"
+          : "Snap to Grid off: corners land on whole units (1 uu) - click for 50-unit steps";
+        snapBtn.setAttribute("aria-label", snapBtn.title);
+      } else {
+        snapBtn.title = "";
+        snapTip.title = "Snap to Grid - only available in Manual mode";
+        snapTip.style.cursor = "not-allowed";
+        snapBtn.setAttribute("aria-label", "Snap to Grid - only available in Manual mode");
+      }
+      snapBtn.disabled = !state.manual;
+    }
+    snapBtn.addEventListener("click", function () {
+      if (!state.manual) { return; }
+      var keep = histSnap();          
+      state.snap = !state.snap;
+      if (state.snap) {
+        
+        for (var i = 1; i < 4; i++) {
+          var c = state.corners[i];
+          state.corners[i] = [Math.round(c[0] / SNAP_STEP) * SNAP_STEP,
+                              Math.round(c[1] / SNAP_STEP) * SNAP_STEP, c[2]];
+        }
+        autoFit();
+      }
+      syncSnap();
+      render();
+      histPush(keep);
+    });
+    syncSnap();
+    var rulerBtn = document.getElementById("ruler");
+    var rulerTip = document.getElementById("ruler-tip");
+    function syncRuler() {
+      
+      rulerBtn.setAttribute("aria-pressed", state.ruler ? "true" : "false");
+      
+      
+      if (state.manual) {
+        rulerTip.removeAttribute("title");
+        rulerTip.style.cursor = "";
+        var rulerWhy = "shows every point pair's component distances in cm, converted to " +
+          "CP (Corpse Pit), F (Firewood Cutter), H (Hunting Camp) and S (Shrine) where possible";
+        rulerBtn.title = state.ruler
+          ? "Ruler on: " + rulerWhy + " - click to hide it"
+          : "Ruler off: " + rulerWhy + " - click to show it";
+        rulerBtn.setAttribute("aria-label", rulerBtn.title);
+      } else {
+        rulerBtn.title = "";
+        rulerTip.title = "Ruler - only available in Manual mode";
+        rulerTip.style.cursor = "not-allowed";
+        rulerBtn.setAttribute("aria-label", "Ruler - only available in Manual mode");
+      }
+      rulerBtn.disabled = !state.manual;
+    }
+    rulerBtn.addEventListener("click", function () {
+      if (!state.manual) { return; }
+      state.ruler = !state.ruler;
+      syncRuler();
+      render();
+    });
+    syncRuler();
+    
+    function edgeBegin() { if (!histEdge) { histEdge = histSnap(); } }
+    function edgeEnd() { if (histEdge) { histPush(histEdge); histEdge = null; } }
+    rw.addEventListener("pointerdown", edgeBegin);
+    rl.addEventListener("pointerdown", edgeBegin);
+    rw.addEventListener("input", function () { edgeBegin(); commit("w", +rw.value); });
+    rl.addEventListener("input", function () { edgeBegin(); commit("l", +rl.value); });
+    rw.addEventListener("change", edgeEnd);
+    rl.addEventListener("change", edgeEnd);
+    nw.addEventListener("change", function () { edgeBegin(); commit("w", +nw.value || 0); edgeEnd(); });
+    nl.addEventListener("change", function () { edgeBegin(); commit("l", +nl.value || 0); edgeEnd(); });
+    
+    syncUiFlags = function () { syncSnap(); syncLocks(); };
+    
+    applyModeUi = function () {
+      mode.value = state.manual ? "manual" : "edge";
+      box.style.display = state.manual ? "none" : "block";
+      syncRuler();
+      if (!state.manual) { show(); }
+    };
+    
+    squareFlagGet = function () { return !!sq.checked; };
+    squareFlagSet = function (v) {
+      sq.checked = !!v;
+      show();          
+    };
+  })();
+
+  
+  
+  var fitBtn = document.getElementById("fit");
+  function syncFit() {
+    fitBtn.setAttribute("aria-pressed", state.fitView ? "true" : "false");
+    fitBtn.title = state.fitView
+      ? "Fit view is on: the map re-fits to the plot after every change - click to freeze the view"
+      : "Fit view is off: the view stays where it is - click to fit and keep fitting";
+    fitBtn.setAttribute("aria-label", fitBtn.title);
+  }
+  fitBtn.addEventListener("click", function () {
+    state.fitView = !state.fitView;
+    if (state.fitView) { fitView(); }
+    syncFit();
+    render();
+  });
+  syncFit();
+  document.getElementById("reset").addEventListener("click", function () {
+    
+    
+    var keep = histSnap();
+    keep.ui = uiSnapshot();
+    var before = JSON.stringify(keep.ui);
+    applyUi(factoryUi());
+    if (JSON.stringify(uiSnapshot()) === before) { return; }   
+    histUndo.push(keep);
+    if (histUndo.length > HIST_MAX) { histUndo.shift(); }
+    histRedo.length = 0;                                       
+    syncHist();
+  });
+  document.getElementById("rotate").addEventListener("click", function () {
+    state.rot = (state.rot + 1) % 4;   
+    autoFit();
+    render();
+  });
+
+  
+  
+  
+  var resizeTimer = 0;
+  function onResize() {
+    if (resizeTimer) { clearTimeout(resizeTimer); }
+    resizeTimer = setTimeout(function () {
+      resizeTimer = 0;
+      autoFit();
+      render();
+    }, 60);
+  }
+  window.addEventListener("resize", onResize);
+  if (window.ResizeObserver && stageEl) {
+    new ResizeObserver(onResize).observe(stageEl);
+  }
+
+  
+  
+  
+  
+  var LOCKS = [
+    { id: "lock-p0", key: "lock0",
+      lockedTip: "P0 locked at the origin (0,0) - click to release it",
+      freeTip: "P0 released, free corner - click to lock it back to the origin (0,0)",
+      onLock: function () { state.corners[0] = [0, 0, 0]; } },
+    { id: "lock-p1", key: "lock1",
+      lockedTip: "P1 locked to the EW axis, slides along it - click to release it",
+      freeTip: "P1 released, free corner - click to lock it back to the EW axis",
+      onLock: function () { state.corners[1] = [state.corners[1][0], 0, 0]; } }
+  ];
+
+  function syncLocks() {
+    LOCKS.forEach(function (L) {
+      var el = document.getElementById(L.id);
+      var locked = !!state[L.key];
+      el.setAttribute("aria-pressed", locked ? "true" : "false");
+      el.title = locked ? L.lockedTip : L.freeTip;
+      el.setAttribute("aria-label", el.title);
+    });
+  }
+
+  LOCKS.forEach(function (L) {
+    document.getElementById(L.id).addEventListener("click", function () {
+      var keep = histSnap();         
+      state[L.key] = !state[L.key];
+      if (state[L.key]) { L.onLock(); }
+      syncLocks();
+      render();
+      histPush(keep);
+    });
+  });
+
+  
+  
+  
+  
+  
+  
+  
+  var HIST_MAX = 10;
+  var histUndo = [], histRedo = [];
+  var histDrag = null;   
+  var histEdge = null;   
+
+  function histSnap() {
+    return {
+      corners: state.corners.map(function (q) { return q.slice(); }),
+      snap: !!state.snap,
+      lock0: !!state.lock0,
+      lock1: !!state.lock1,
+      manual: !!state.manual,
+      square: squareFlagGet ? squareFlagGet() : false
+    };
+  }
+  
+  
+  
+  function histSameCorners(a, b) {
+    if (!a || !b) { return false; }
+    for (var i = 0; i < 4; i++) {
+      if (a.corners[i][0] !== b.corners[i][0] || a.corners[i][1] !== b.corners[i][1]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function histPush(keep) {
+    if (!keep || histSameCorners(keep, histSnap())) { return; }
+    histUndo.push(keep);
+    if (histUndo.length > HIST_MAX) { histUndo.shift(); }
+    histRedo.length = 0;             
+    syncHist();
+  }
+  function histApply(s) {
+    
+    
+    if (s && s.ui) { applyUi(s.ui); return; }
+    state.corners = s.corners.map(function (q) {
+      return [q[0], q[1], q[2] === undefined ? 0 : q[2]];
+    });
+    
+    
+    
+    
+    
+    
+    
+    state.snap = s.snap;
+    for (var i = 0; i < 4; i++) {
+      var c = state.corners[i];
+      if (c[0] % SNAP_STEP !== 0 || c[1] % SNAP_STEP !== 0) { state.snap = false; }
+    }
+    state.lock0 = (state.corners[0][0] === 0 && state.corners[0][1] === 0);
+    state.lock1 = (state.corners[1][1] === 0);
+    
+    
+    
+    if (s.manual !== undefined) { state.manual = !!s.manual; }
+    if (squareFlagSet) { squareFlagSet(s.square); }
+    if (applyModeUi) { applyModeUi(); }
+    if (syncUiFlags) { syncUiFlags(); }
+    autoFit();
+    render();
+  }
+  function histUndoOne() {
+    if (!histUndo.length) { return; }
+    var s = histUndo.pop();
+    var keep = histSnap();
+    
+    
+    if (s && s.ui) { keep.ui = uiSnapshot(); }
+    histRedo.push(keep);
+    if (histRedo.length > HIST_MAX) { histRedo.shift(); }
+    histApply(s);
+    syncHist();
+  }
+  function histRedoOne() {
+    if (!histRedo.length) { return; }
+    var s = histRedo.pop();
+    var keep = histSnap();
+    if (s && s.ui) { keep.ui = uiSnapshot(); }
+    histUndo.push(keep);
+    if (histUndo.length > HIST_MAX) { histUndo.shift(); }
+    histApply(s);
+    syncHist();
+  }
+  function syncHist() {
+    var u = document.getElementById("undo"), r = document.getElementById("redo");
+    u.disabled = histUndo.length === 0;
+    r.disabled = histRedo.length === 0;
+    
+    u.textContent = histUndo.length ? "Undo (" + histUndo.length + ")" : "Undo";
+    r.textContent = histRedo.length ? "Redo (" + histRedo.length + ")" : "Redo";
+    u.title = histUndo.length
+      ? "Undo the last plot change (" + histUndo.length + " of " + HIST_MAX + " stored)"
+      : "Nothing to undo";
+    r.title = histRedo.length
+      ? "Redo the next plot change (" + histRedo.length + " of " + HIST_MAX + " stored)"
+      : "Nothing to redo";
+    u.setAttribute("aria-label", u.title);
+    r.setAttribute("aria-label", r.title);
+  }
+  document.getElementById("undo").addEventListener("click", histUndoOne);
+  document.getElementById("redo").addEventListener("click", histRedoOne);
+  
+  document.addEventListener("keydown", function (evt) {
+    if (!(evt.ctrlKey || evt.metaKey)) { return; }
+    var k = (evt.key || "").toLowerCase();
+    if (k === "z") {
+      evt.preventDefault();
+      if (evt.shiftKey) { histRedoOne(); } else { histUndoOne(); }
+    } else if (k === "y") {
+      evt.preventDefault();
+      histRedoOne();
+    }
+  });
+  syncHist();
+  syncLocks();
+
+  
+  
+  var copyBtn = document.getElementById("copy-model");
+  var urlBtn = document.getElementById("copy-url");
+  function copyFlash(btn, idleTitle) {
+    btn.classList.add("done");
+    btn.title = "Copied";
+    setTimeout(function () {
+      btn.classList.remove("done");
+      btn.title = idleTitle;
+    }, 1200);
+  }
+  function copyText(text, btn, idleTitle) {
+    function ok() { copyFlash(btn, idleTitle); }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); ok(); } catch (e) {   }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } else {
+      fallback();
+    }
+  }
+  copyBtn.addEventListener("click", function () {
+    copyText(document.getElementById("status").innerText, copyBtn, "Copy model parameters");
+  });
+  
+  
+  urlBtn.addEventListener("click", function () {
+    var list = state.corners.slice(0, 4).map(function (p) {
+      return fmtCoord(p[0]) + "," + fmtCoord(p[1]);
+    }).join(",");
+    var base = location.href.split("#")[0].split("?")[0];
+    copyText(base + "?c=" + list, urlBtn, "Export: copy a link to this plot");
+  });
+
+  window.addEventListener("resize", function () { M = metrics(); render(); });
+
+  
+  
+  
+  
+  
+  (function () {
+    var nums = function (s) {
+      var m = String(s || "").match(/-?\d+(?:\.\d+)?/g);
+      return m ? m.map(Number) : [];
+    };
+    var pair = function (s) {
+      var n = nums(s);
+      return n.length >= 2 ? [n[0], n[1], 0] : null;
+    };
+    var q = {};
+    (location.search.replace(/^\?/, "") + "&" + location.hash.replace(/^#/, "")).split("&").forEach(function (kv) {
+      var i = kv.indexOf("=");
+      if (i > 0) { q[kv.slice(0, i).toLowerCase()] = decodeURIComponent(kv.slice(i + 1)); }
+      else if (kv && kv.indexOf(",") >= 0) { q[""] = kv; }
+    });
+    var c = null;
+    var a = pair(q.p0), b = pair(q.p1), d = pair(q.p2), e = pair(q.p3);
+    if (a && b && d && e) {
+      c = [a, b, d, e];
+    } else {
+      var f = nums(q.c || q.corners || q.p || q[""]);
+      if (f.length >= 8) {
+        c = [[f[0], f[1], 0], [f[2], f[3], 0], [f[4], f[5], 0], [f[6], f[7], 0]];
+      } else if (f.length >= 4) {
+        
+        c = [[f[0], f[1], 0], [f[2], f[1], 0], [f[2], f[3], 0], [f[0], f[3], 0]];
+      }
+    }
+    if (c) { state.corners = c; }
+  })();
+
+  fitView();
+  render();
+  window.__state = state;
+  window.__render = render;
+  
+  window.__fracRange = function () { return lastFit ? fracRange(lastFit) : null; };
+  window.__fracCacheSize = function () { return fracRangeCache.size; };
+})();
+</script>
+</body></html>
